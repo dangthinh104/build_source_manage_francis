@@ -15,13 +15,13 @@ defineProps({
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Dashboard</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Dashboard</h2>
         </template>
 
 
         <div class="py-12">
             <div class="max-w-10xl mx-auto sm:px-12 lg:px-12 space-y-12">
-                <div class="p-8 sm:p-12 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                <div class="p-8 sm:p-12 bg-white shadow sm:rounded-lg">
                     <TickerWatchList
                         :mySite="mySite"
                         class="max-w-3xl"

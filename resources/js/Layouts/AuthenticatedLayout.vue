@@ -1,177 +1,265 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link, usePage  } from '@inertiajs/vue3';
-import { computed } from 'vue'
-const showingNavigationDropdown = ref(false);
-const page = usePage()
-const isAuth = computed(() => page.props.auth.user.role)
+import { Link, usePage } from '@inertiajs/vue3';
 
+const page = usePage();
+const desktopSidebarCollapsed = ref(false);
+const mobileSidebarOpen = ref(false);
+
+const user = computed(() => page.props.auth?.user ?? { name: 'User', email: '' });
+const isAdmin = computed(() => user.value?.role === 'Admin');
+
+const navItems = computed(() => {
+    const items = [
+        {
+            key: 'dashboard',
+            label: 'Dashboard',
+            routeName: 'dashboard',
+            patterns: ['dashboard'],
+            adminOnly: true,
+            iconPath: ['M4 6h6v6H4z', 'M14 6h6v6h-6z', 'M4 16h6v6H4z', 'M14 16h6v6h-6z'],
+        },
+        {
+            key: 'logs',
+            label: 'Log PM2',
+            routeName: 'logs.index',
+            patterns: ['logs.*'],
+            iconPath: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
+        },
+        {
+            key: 'users',
+            label: 'Users',
+            routeName: 'users.index',
+            patterns: ['users.*'],
+            adminOnly: true,
+            iconPath: ['M17 20h5v-2a4 4 0 00-4-4h-1', 'M7 20H2v-2a4 4 0 014-4h1', 'M12 12a4 4 0 100-8 4 4 0 000 8z'],
+        },
+        {
+            key: 'env',
+            label: 'ENV Variables',
+            routeName: 'envVariables.index',
+            patterns: ['envVariables.*'],
+            iconPath: ['M12 2a10 10 0 00-9.95 9.05', 'M12 2v10l4 2', 'M2 12a10 10 0 0010 10'],
+        },
+    ];
+
+    return items.filter((item) => (item.adminOnly ? isAdmin.value : true));
+});
+
+const isActive = (item) => {
+    const patterns = item.patterns ?? [item.routeName];
+    return patterns.some((pattern) => route().current(pattern));
+};
+
+const toggleDesktopSidebar = () => {
+    desktopSidebarCollapsed.value = !desktopSidebarCollapsed.value;
+};
+
+const openMobileSidebar = () => {
+    mobileSidebarOpen.value = true;
+};
+
+const closeMobileSidebar = () => {
+    mobileSidebarOpen.value = false;
+};
 </script>
 
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <nav class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-                <!-- Primary Navigation Menu -->
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex justify-between h-16">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div v-if="isAuth === 'Admin'"  class="shrink-0 flex items-center">
-                                <Link :href="route('dashboard')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200"
-                                    />
+    <div class="min-h-screen bg-slate-100 text-slate-900" @keydown.esc.window="closeMobileSidebar">
+        <div class="flex min-h-screen">
+            <aside
+                class="hidden md:flex flex-col bg-slate-900 text-white shadow-xl shadow-slate-900/40 transition-all duration-300"
+                :class="desktopSidebarCollapsed ? 'w-20' : 'w-72'"
+            >
+                <div class="flex items-center justify-between px-5 py-6 border-b border-white/10">
+                    <Link
+                        :href="isAdmin ? route('dashboard') : route('logs.index')"
+                        class="flex items-center gap-3"
+                    >
+                        <ApplicationLogo class="h-10 w-auto text-white" />
+                        <span
+                            v-if="!desktopSidebarCollapsed"
+                            class="font-semibold tracking-wide uppercase text-sm text-slate-100"
+                        >
+                            Francis Manage
+                        </span>
                                 </Link>
-                            </div>
-                            <div v-else class="shrink-0 flex items-center">
-                                <Link :href="route('logs.index')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200"
-                                    />
-                                </Link>
+
+                    <button
+                        type="button"
+                        class="text-white/60 hover:text-white transition"
+                        @click="toggleDesktopSidebar"
+                        aria-label="Toggle sidebar width"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16M4 6h10M10 18h10" />
+                        </svg>
+                    </button>
                             </div>
 
-                            <!-- Navigation Links -->
-                            <div v-if="isAuth === 'Admin'" class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                                    Dashboard
-                                </NavLink>
+                <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1">
+                    <Link
+                        v-for="item in navItems"
+                        :key="item.key"
+                        :href="route(item.routeName)"
+                        class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition"
+                        :class="[
+                            isActive(item)
+                                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-900/40'
+                                : 'text-slate-300 hover:bg-white/10 hover:text-white',
+                            desktopSidebarCollapsed ? 'justify-center px-0' : '',
+                        ]"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                            <path
+                                v-for="(segment, index) in item.iconPath"
+                                :key="`${item.key}-${index}`"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                :d="segment"
+                            />
+                        </svg>
+                        <span v-if="!sidebarCollapsed">{{ item.label }}</span>
+                                </Link>
+                </nav>
+                <div class="px-5 py-6 border-t border-white/10 text-xs text-slate-400">
+                    <p v-if="!desktopSidebarCollapsed">Signed in as</p>
+                    <p class="font-semibold text-slate-100 truncate">{{ user.name }}</p>
                             </div>
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('logs.index')" :active="route().current('logs.index')">
-                                    Log PM2
-                                </NavLink>
+            </aside>
+
+            <transition name="fade">
+                <div
+                    v-if="mobileSidebarOpen"
+                    class="fixed inset-0 bg-slate-900/60 z-40 md:hidden"
+                    @click="closeMobileSidebar"
+                    aria-hidden="true"
+                />
+            </transition>
+            <div
+                class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white shadow-2xl shadow-slate-900/60 transform transition-transform duration-300 md:hidden"
+                :class="mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="flex flex-col h-full">
+                    <div class="flex items-center justify-between px-5 py-6 border-b border-white/10">
+                        <div class="flex items-center gap-3">
+                            <ApplicationLogo class="h-10 w-auto text-white" />
+                            <span class="font-semibold tracking-wide uppercase text-sm text-slate-100">
+                                Francis Manage
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="text-white/70 hover:text-white transition"
+                            @click="closeMobileSidebar"
+                            aria-label="Close navigation"
+                        >
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <nav class="flex-1 overflow-y-auto px-4 py-6 space-y-1">
+                        <Link
+                            v-for="item in navItems"
+                            :key="`mobile-${item.key}`"
+                            :href="route(item.routeName)"
+                            class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition"
+                            :class="
+                                isActive(item)
+                                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-900/40'
+                                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                            "
+                            @click="closeMobileSidebar"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                <path
+                                    v-for="(segment, index) in item.iconPath"
+                                    :key="`mobile-${item.key}-${index}`"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    :d="segment"
+                                />
+                            </svg>
+                            <span>{{ item.label }}</span>
+                        </Link>
+                    </nav>
+                    <div class="px-5 py-6 border-t border-white/10 text-xs text-slate-400">
+                        <p class="font-semibold text-slate-100 truncate">{{ user.name }}</p>
+                        <p class="text-slate-300 text-xs truncate">{{ user.email }}</p>
                             </div>
-                            <div  v-if="isAuth === 'Admin'" class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('users.index')" :active="route().current('users.index')">
-                                    Users
-                                </NavLink>
                             </div>
-                            <div   class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('envVariables.index')" :active="route().current('envVariables.index')">
-                                    ENV Variables
-                                </NavLink>
+                            </div>
+
+            <div class="flex-1 flex flex-col min-h-screen">
+                <header class="bg-white/80 backdrop-blur border-b border-slate-200">
+                    <div class="flex items-center justify-between px-4 sm:px-6 lg:px-10 2xl:px-16 py-4">
+                        <div class="flex items-center gap-3">
+                            <button
+                                type="button"
+                                class="inline-flex md:hidden items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm"
+                                @click="openMobileSidebar"
+                                aria-label="Open navigation"
+                                aria-expanded="mobileSidebarOpen"
+                            >
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h8" />
+                                </svg>
+                            </button>
+                            <div>
+                                <p class="text-sm text-slate-500">Welcome back</p>
+                                <p class="font-semibold text-slate-900">{{ user.name }}</p>
                             </div>
                         </div>
-
-                        <div class="hidden sm:flex sm:items-center sm:ms-6">
-                            <!-- Settings Dropdown -->
-                            <div class="ms-3 relative">
-                                <Dropdown align="right" width="48">
+                        <Dropdown align="right" width="56">
                                     <template #trigger>
-                                        <span class="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150"
+                                    class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm hover:text-slate-900"
                                             >
-                                                {{ $page.props.auth.user.name }}
-
+                                    <span class="hidden sm:inline">{{ user.email }}</span>
                                                 <svg
-                                                    class="ms-2 -me-0.5 h-4 w-4"
+                                        class="h-4 w-4 text-slate-400"
                                                     xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
                                                 >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10l4 4 4-4" />
                                                 </svg>
                                             </button>
-                                        </span>
                                     </template>
-
                                     <template #content>
-                                        <DropdownLink :href="route('profile.edit')"> Profile </DropdownLink>
+                                <DropdownLink :href="route('profile.edit')">Profile</DropdownLink>
                                         <DropdownLink :href="route('logout')" method="post" as="button">
                                             Log Out
                                         </DropdownLink>
                                     </template>
                                 </Dropdown>
                             </div>
-                        </div>
+                </header>
 
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button
-                                @click="showingNavigationDropdown = !showingNavigationDropdown"
-                                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:text-gray-400 transition duration-150 ease-in-out"
+                <main class="flex-1 bg-slate-100/60">
+                    <div class="mx-auto w-full max-w-6xl lg:max-w-7xl 2xl:max-w-6xl px-4 sm:px-6 lg:px-10 2xl:px-16 py-8 lg:py-10 2xl:py-12 space-y-6">
+                        <div class="rounded-3xl bg-white shadow-xl shadow-slate-200/70 ring-1 ring-slate-100">
+                            <div
+                                v-if="$slots.header"
+                                class="border-b border-slate-100 bg-slate-50/60 px-6 sm:px-8 lg:px-10 py-6 rounded-t-3xl"
                             >
-                                <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                    <path
-                                        :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex': !showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex': showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Responsive Navigation Menu -->
-                <div
-                    :class="{ block: showingNavigationDropdown, hidden: !showingNavigationDropdown }"
-                    class="sm:hidden"
-                >
-                    <div class="pt-2 pb-3 space-y-1">
-                        <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
-
-                    <!-- Responsive Settings Options -->
-                    <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
-                        <div class="px-4">
-                            <div class="font-medium text-base text-gray-800 dark:text-gray-200">
-                                {{ $page.props.auth.user.name }}
+                                <slot name="header" />
                             </div>
-                            <div class="font-medium text-sm text-gray-500">{{ $page.props.auth.user.email }}</div>
+                            <div class="px-6 sm:px-8 lg:px-10 py-8 lg:py-10">
+                                <slot />
                         </div>
-
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')"> Profile </ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('logout')" method="post" as="button">
-                                Log Out
-                            </ResponsiveNavLink>
                         </div>
                     </div>
+                </main>
                 </div>
-            </nav>
-
-            <!-- Page Heading -->
-            <header class="bg-white dark:bg-gray-800 shadow" v-if="$slots.header">
-                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    <slot name="header" />
-                </div>
-            </header>
-
-            <!-- Page Content -->
-            <main>
-                <slot />
-            </main>
         </div>
     </div>
 </template>

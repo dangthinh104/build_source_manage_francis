@@ -149,151 +149,206 @@ const buildSite = async (siteID,index) => {
 </script>
 
 <template>
-    <section class="space-y-9" style="max-width: 100rem;">
-        <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">List our site</h2>
-
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                You can update or create your site
-            </p>
+    <section class="space-y-10" style="max-width: 100rem;">
+        <header class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-500">Sites</p>
+            <h2 class="text-2xl font-semibold text-slate-900">Stay in sync with every build</h2>
+            <p class="text-sm text-slate-600">Register new sites, monitor PM2 ports, and trigger builds with live feedback.</p>
         </header>
 
-        <form @submit.prevent="addNewSite()">
-            <div class="mb-4">
-                <label for="site_name" class="block text-sm font-medium text-white">Name</label>
-                <input type="text" id="site_name" v-model="form.site_name" name="site_name" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                <InputError :message="form.errors.site_name" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-            </div>
-
-            <div class="mb-4">
-                <label for="folder_source_path" class="block text-sm font-medium text-white">Folder Source Path</label>
-                <input type="text" id="folder_source_path" v-model="form.folder_source_path" name="folder_source_path" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                <InputError :message="form.errors.folder_source_path" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-            </div>
-
-            <div class="block mt-4">
-                <label class="flex items-center">
-                    <Checkbox name="include_pm2" v-model:checked="form.include_pm2" />
-                    <span class="ms-2 text-sm text-gray-600 text-white">Include PM2</span>
-                </label>
-            </div>
-            <div class="mb-4" v-show="form.include_pm2">
-                <label for="folder_source_path" class="block text-sm font-medium text-white">Port PM2</label>
-                <input type="text" id="port_pm2" v-model="form.port_pm2" name="folder_source_path" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                <InputError :message="form.errors.port_pm2" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-            </div>
-            <div>
-                <PrimaryButton type="submit" >Add Site </PrimaryButton>
-            </div>
-
-        </form>
-        <div class="overflow-x-auto">
-        <table class="table-auto border-collapse border border-gray-400 w-full">
-            <thead>
-            <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site Name</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Log</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Success</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Fail</th>
-                <th scope="col" class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last User Build</th>
-<!--                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Build</th>-->
-            </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="(site, index) in mySite" :key="site.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ site.id }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <a :href="`https://${site.site_name}`" target="_blank" >{{ site.site_name }} </a>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    View Log
-                    <button @click="onOpenLogDetails(site.id)"  class="bg-300  rounded inline-flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                        </svg>
-                    </button>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-700">{{ site.last_build_success }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ site.last_build_fail }}</td>
-                <td class="px-1 py-1 whitespace-nowrap text-sm text-gray-500">{{ site.name }}</td>
-<!--                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ site.last_build }}</td>-->
-
-                <td class="px-2 py-2 whitespace-nowrap text-right text-sm font-medium">
-                    <SecondaryButton @click="openSiteDetailDialog(site.id, index)">Detail</SecondaryButton>
-                    <PrimaryButton
-                        @click="buildSite(site.id, index)"
-                        :disabled="loadingIndices.includes(index)"
-                        class="relative transition-all duration-200"
+        <form @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label for="site_name" class="block text-sm font-medium text-slate-700">Site name</label>
+                    <input
+                        type="text"
+                        id="site_name"
+                        v-model="form.site_name"
+                        name="site_name"
+                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        placeholder="example.francis.house"
                     >
-                        <span :class="{ 'opacity-0': loadingIndices.includes(index) }">Build</span>
-                        <div
-                            v-if="loadingIndices.includes(index)"
-                            class="absolute inset-0 flex items-center justify-center bg-opacity-20 bg-blue-100 transition-opacity duration-200"
-                        >
-                            <div class="h-6 w-6 border-4 border-primary border-t-transparent rounded-full animate-spin">
-                                <span class="sr-only">Wait...</span>
-                            </div>
-                            <span class="ml-2 text-primary font-medium">Wait...</span>
-                        </div>
-                    </PrimaryButton>
+                    <InputError :message="form.errors.site_name" class="mt-2" />
+                </div>
 
-                </td>
-            </tr>
-            </tbody>
-        </table>
+                <div>
+                    <label for="folder_source_path" class="block text-sm font-medium text-slate-700">Folder source path</label>
+                    <input
+                        type="text"
+                        id="folder_source_path"
+                        v-model="form.folder_source_path"
+                        name="folder_source_path"
+                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        placeholder="/var/www/html/sites/acme"
+                    >
+                    <InputError :message="form.errors.folder_source_path" class="mt-2" />
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <Checkbox name="include_pm2" v-model:checked="form.include_pm2" />
+                    Include PM2 configuration
+                </label>
+                <div v-if="form.include_pm2" class="w-full md:w-auto md:flex-1">
+                    <label for="port_pm2" class="block text-sm font-medium text-slate-700">PM2 port</label>
+                    <input
+                        type="text"
+                        id="port_pm2"
+                        v-model="form.port_pm2"
+                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        placeholder="3001"
+                    >
+                    <InputError :message="form.errors.port_pm2" class="mt-2" />
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <PrimaryButton class="px-6 py-3 text-sm" :loading="form.processing" loading-text="Saving site...">Add site</PrimaryButton>
+            </div>
+        </form>
+
+        <div class="rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-6 py-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900">Current deployments</h3>
+                    <p class="text-sm text-slate-500">{{ mySite.length }} site(s) tracked</p>
+                </div>
+                <span class="rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Live builds
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[720px] text-left text-sm text-slate-600">
+                    <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-6 py-3">ID</th>
+                            <th class="px-6 py-3">Site</th>
+                            <th class="px-6 py-3">Last log</th>
+                            <th class="px-6 py-3">Last success</th>
+                            <th class="px-6 py-3">Last fail</th>
+                            <th class="px-6 py-3">Last builder</th>
+                            <th class="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr
+                            v-for="(site, index) in mySite"
+                            :key="site.id"
+                            :class="index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'"
+                            class="transition hover:bg-indigo-50/40"
+                        >
+                            <td class="px-6 py-4 font-semibold text-slate-800">#{{ site.id }}</td>
+                            <td class="px-6 py-4">
+                                <a :href="`https://${site.site_name}`" target="_blank" class="font-medium text-indigo-600 hover:underline">
+                                    {{ site.site_name }}
+                                </a>
+                                <p class="text-xs text-slate-500">Port {{ site.port_pm2 || '—' }}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <button
+                                    @click="onOpenLogDetails(site.id)"
+                                    class="inline-flex items-center gap-1 rounded-full border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+                                >
+                                    View log
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 12h16m0 0l-6-6m6 6-6 6" />
+                                    </svg>
+                                </button>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+                                    {{ site.last_build_success || '—' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
+                                    {{ site.last_build_fail || '—' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-slate-500">
+                                <p class="font-medium text-slate-700">{{ site.name || '—' }}</p>
+                                <p class="text-xs">{{ site.last_build || 'No history' }}</p>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <SecondaryButton class="text-xs" @click="openSiteDetailDialog(site.id, index)">Details</SecondaryButton>
+                                    <PrimaryButton
+                                        class="text-xs"
+                                        type="button"
+                                        :loading="loadingIndices.includes(index)"
+                                        loading-text="Building..."
+                                        @click="buildSite(site.id, index)"
+                                    >
+                                        Build
+                                    </PrimaryButton>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
         <Modal :show="confirmingViewLog" @close="closeConfirmViewLog" :maxWidth="maxWidth">
-            <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Show details log file at: {{details.path_log }}
-                </h2>
+            <div class="p-6 space-y-4">
+                <h2 class="text-lg font-semibold text-slate-900">Latest log · {{ details.path_log }}</h2>
                 <div class="editable-content" contenteditable="false">
                     {{ details.log_content }}
                 </div>
-                <div class="mt-6 flex justify-end">
-                    <SecondaryButton @click="closeConfirmViewLog"> Ok </SecondaryButton>
+                <div class="flex justify-end">
+                    <SecondaryButton @click="closeConfirmViewLog">Close</SecondaryButton>
                 </div>
             </div>
         </Modal>
+
         <Modal :show="detailViewConfirm" @close="closeDetailSiteModal" :maxWidth="maxWidth">
             <form @submit.prevent="updateMySetting">
-            <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Detail for site {{detailSite.site_name }}
-                </h2>
-                <ul class="text-white">
-                    <li>Last path log: {{detailSite.last_path_log}}</li>
-                    <li>SH Content Dir: {{detailSite.sh_content_dir}}</li>
-                    <li>Last User Build: {{detailSite.last_user_build}}</li>
-                    <li>Build: {{detailSite.last_build}}</li>
-                    <li>Last Success: {{detailSite.last_build_success}}</li>
-                    <li>Last Fail: {{detailSite.last_build_fail}}</li>
-                    <li>Site Created Day: {{detailSite.created_at}}</li>
-                    <li>Path source code: {{detailSite.path_source_code}}</li>
-                    <li>Port PM2:
-                        <input v-model="detailSite.port_pm2" type="text" style="width: 50%;" class="mt-5 text-black block border-gray-300 rounded-md shadow-sm"  />
-                    </li>
-                    <li>Api Endpoint URL
-                        <input v-model="detailSite.api_endpoint_url" type="text"  style="width: 50%;" class="mt-1 text-black block border-gray-300 rounded-md shadow-sm"  />
-                    </li>
+                <div class="p-6 space-y-4">
+                    <h2 class="text-lg font-semibold text-slate-900">Details · {{ detailSite.site_name }}</h2>
+                    <div class="grid gap-3 md:grid-cols-2 text-sm text-slate-600">
+                        <p><span class="font-semibold text-slate-800">Last path log:</span> {{ detailSite.last_path_log }}</p>
+                        <p><span class="font-semibold text-slate-800">SH directory:</span> {{ detailSite.sh_content_dir }}</p>
+                        <p><span class="font-semibold text-slate-800">Last user build:</span> {{ detailSite.last_user_build }}</p>
+                        <p><span class="font-semibold text-slate-800">Last build:</span> {{ detailSite.last_build }}</p>
+                        <p><span class="font-semibold text-slate-800">Success:</span> {{ detailSite.last_build_success }}</p>
+                        <p><span class="font-semibold text-slate-800">Fail:</span> {{ detailSite.last_build_fail }}</p>
+                        <p><span class="font-semibold text-slate-800">Created:</span> {{ detailSite.created_at }}</p>
+                        <p><span class="font-semibold text-slate-800">Source:</span> {{ detailSite.path_source_code }}</p>
+                    </div>
 
-                </ul>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">PM2 port</label>
+                            <input
+                                v-model="detailSite.port_pm2"
+                                type="text"
+                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">API endpoint URL</label>
+                            <input
+                                v-model="detailSite.api_endpoint_url"
+                                type="text"
+                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                        </div>
+                    </div>
 
-                <div class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    <h4 style="color:white">Content SH</h4>
-                    <div class="editable-content" contenteditable="false">
-                        {{ detailSite.sh_content }}
+                    <div>
+                        <h4 class="text-sm font-semibold text-slate-700">Shell content</h4>
+                        <div class="editable-content" contenteditable="false">
+                            {{ detailSite.sh_content }}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <PrimaryButton type="submit" class="px-5 py-2 text-sm">Update</PrimaryButton>
+                        <SecondaryButton @click="closeDetailSiteModal">Close</SecondaryButton>
                     </div>
                 </div>
-
-                <div class="mt-6 flex justify-end">
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Update</button>
-                    <SecondaryButton @click="closeDetailSiteModal"> Ok </SecondaryButton>
-                </div>
-            </div>
             </form>
         </Modal>
     </section>
@@ -301,14 +356,15 @@ const buildSite = async (siteID,index) => {
 
 <style scoped>
 .editable-content {
-    font-size: 0.7rem;
-    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
-    width: 100%; /* Full width */
-    border: 1px solid #ccc;
-    padding: 10px;
-    background-color: #171717;
+    font-size: 0.8rem;
+    font-family: "Fira Code", "Courier New", Courier, "Lucida Console", Monaco, monospace;
+    width: 100%;
+    border-radius: 1rem;
+    border: 1px solid #0f172a;
+    padding: 1rem;
+    background-color: #0f172a;
     word-wrap: break-word;
-    white-space: pre-wrap; /* Preserve white spaces */
-    color:white;
+    white-space: pre-wrap;
+    color: #e2e8f0;
 }
 </style>

@@ -3,13 +3,13 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Env Manager</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Env Manager</h2>
         </template>
 
 
         <div class="py-12">
             <div class="max-w-10xl mx-auto sm:px-12 lg:px-12 space-y-12">
-                <div class="p-6  min-h-screen dark:bg-gray-800">
+                <div class="p-6  min-h-screen bg-white">
                     <div class="max-w-8xl mx-auto bg-white p-4 shadow rounded" style="min-height: 20rem;">
 
                     <!-- Thông báo thành công -->

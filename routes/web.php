@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnvVariableController;
 use App\Http\Controllers\LogPM2Controller;
 use App\Http\Controllers\MySiteController;
+use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\RoleAdminMiddleware;
@@ -38,7 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/envVariables/{id}/edit', [EnvVariableController::class, 'edit'])->name('envVariables.edit');
     Route::put('/envVariables/{id}', [EnvVariableController::class, 'update'])->name('envVariables.update');
     Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
-//    Route::resource('envVariables', EnvVariableController::class);
+    Route::resource('parameters', ParameterController::class)->only(['index', 'store', 'update', 'destroy']);
 
 })->middleware(RoleAdminMiddleware::class);;
 
