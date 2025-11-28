@@ -52,4 +52,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserPreference::class);
     }
+
+    public function buildHistories()
+    {
+        return $this->hasMany(\App\Models\BuildHistory::class, 'user_id');
+    }
 }

@@ -16,6 +16,15 @@ class MySiteController extends Controller
         $this->siteBuildService = $siteBuildService;
     }
 
+    public function index()
+    {
+        $sites = \App\Models\MySite::orderByDesc('created_at')->paginate(15);
+
+        return inertia('MySites/Index', [
+            'sites' => $sites,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([

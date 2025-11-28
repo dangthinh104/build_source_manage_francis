@@ -120,6 +120,13 @@ const navItems = computed(() => {
             iconPath: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
         },
         {
+            key: 'my_sites',
+            label: 'My Sites',
+            routeName: 'my_site.index',
+            patterns: ['my-site*', 'my_sites*', 'my-sites*', 'my_site.*', 'my_sites.*', 'my-sites.*'],
+            iconPath: ['M3 7h16', 'M3 12h10', 'M3 17h6'],
+        },
+        {
             key: 'users',
             label: 'Users',
             routeName: 'users.index',

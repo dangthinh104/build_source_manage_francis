@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Illuminate\Support\Carbon;
+use App\Models\BuildHistory;
+use App\Models\MySite;
+use App\Models\User;
 class DashboardController extends Controller
 {
  public function index()
@@ -13,34 +16,58 @@ class DashboardController extends Controller
         if (!Gate::allows('isAdmin')) {
             return redirect()->route('logs.index');
         }
-        
-        $mySite = DB::table('my_site')
-            ->selectRaw('
-                my_site.id as id, 
-                site_name, 
-                path_log, 
-                sh_content_dir, 
-                last_build, 
-                my_site.created_at as created_at, 
-                my_site.updated_at as updated_at, 
-                users.name as name, 
-                last_build_success,
-                last_build_fail,
-                port_pm2
-            ')
-            ->join('users', 'my_site.last_user_build', '=', 'users.id')
+        // Statistics
+        $totalSites = MySite::count();
+        $totalBuilds = BuildHistory::count();
+        $successCount = BuildHistory::where('status', 'success')->count();
+        $failedCount = BuildHistory::where('status', 'failed')->count();
+        $successRate = $totalBuilds > 0 ? round(($successCount / $totalBuilds) * 100, 2) : 0;
+
+        // Top builders by build count
+        $topBuilders = User::select('users.id', 'users.name')
+            ->join('build_histories', 'users.id', '=', 'build_histories.user_id')
+            ->selectRaw('users.id, users.name, COUNT(build_histories.id) as builds_count')
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('builds_count')
+            ->limit(5)
             ->get();
-        
-        // Xử lý định dạng thời gian và ghi đè lên biến hiện có
-        foreach ($mySite as $site) {
-//var_dump($site->last_build_success);
-//var_dump($this->formatTimeAgo($site->last_build_success));
-            $site->last_build_success = $this->formatTimeAgo($site->last_build_success);
-            $site->last_build_fail = $this->formatTimeAgo($site->last_build_fail);
+
+        // Recent builds
+        $recentBuilds = BuildHistory::with(['user', 'site'])
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(function ($b) {
+                return [
+                    'id' => $b->id,
+                    'site_name' => $b->site->site_name ?? 'Unknown',
+                    'user_name' => $b->user->name ?? 'System',
+                    'status' => $b->status,
+                    'created_at' => $this->formatTimeAgo($b->created_at),
+                ];
+            });
+
+        // Builds over last 7 days
+        $buildsLast7 = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = Carbon::now()->subDays($i)->startOfDay();
+            $next = (clone $day)->endOfDay();
+            $count = BuildHistory::whereBetween('created_at', [$day, $next])->count();
+            $buildsLast7[] = [
+                'date' => $day->format('Y-m-d'),
+                'label' => $day->format('D'),
+                'count' => $count,
+            ];
         }
-//dd($mySite->toArray());        
+
         return Inertia::render('Dashboard', [
-            'mySite' => $mySite->toArray(),
+            'totalSites' => $totalSites,
+            'totalBuilds' => $totalBuilds,
+            'successRate' => $successRate,
+            'failedCount' => $failedCount,
+            'topBuilders' => $topBuilders,
+            'recentBuilds' => $recentBuilds,
+            'buildsLast7' => $buildsLast7,
         ]);
     }
 

@@ -143,6 +143,18 @@ class SiteBuildService
             ->where('id', $siteObject->id)
             ->update($update);
 
+        // Record build history
+        try {
+            \App\Models\BuildHistory::create([
+                'site_id' => $siteObject->id,
+                'user_id' => $userId,
+                'status'  => $returnVar === 0 ? 'success' : 'failed',
+                'output_log' => implode("\n", $output),
+            ]);
+        } catch (\Exception $e) {
+            // fail silently; logging could be added here
+        }
+
         return [
             'status'     => $status ? 1 : 0,
             'return_var' => $returnVar,

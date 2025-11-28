@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
     Route::post('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/my-sites', [MySiteController::class, 'index'])->name('my_site.index');
 
     Route::get('/envVariables', [EnvVariableController::class, 'index'])->name('envVariables.index');
     Route::post('/envVariables', [EnvVariableController::class, 'store'])->name('envVariables.store');
