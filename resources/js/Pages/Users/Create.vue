@@ -30,57 +30,94 @@ const submit = () => {
         </template>
 
 
-        <div class="py-12">
-            <div class="max-w-10xl mx-auto sm:px-12 lg:px-12 space-y-12">
-                <div class="p-6  min-h-screen bg-white">
-                    <div class="max-w-8xl mx-auto bg-white p-4 shadow rounded" style="min-height: 20rem;">
-
-                        <div class="container mx-auto px-4 py-8">
-                            <h1 class="text-3xl font-bold mb-6">Add User</h1>
-
-                            <form @submit.prevent="submit" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Name</label>
-                                    <input v-model="form.name" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter Name" />
-                                    <InputError :message="form.errors.name" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
-                                    <input v-model="form.email" type="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter Email" />
-                                    <InputError :message="form.errors.email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
-                                    <input v-model="form.password" type="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter Password" />
-                                    <InputError :message="form.errors.password" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Confirm Password</label>
-                                    <input v-model="form.password_confirmation" type="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Confirm Password" />
-                                    <InputError :message="form.errors.password_confirmation" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Role</label>
-                                    <select v-model="form.role" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                        <option value="Default">Default</option>
-                                        <option value="Admin">Admin</option>
-                                    </select>
-                                </div>
-
-                                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Create User</button>
-                                <PrimaryButton><Link :href="route('users.index')" class="text-blue-500 hover:underline">Back</Link></PrimaryButton>
-                            </form>
-                        </div>
-                    </div>
+        <div class="max-w-3xl mx-auto space-y-6">
+            <!-- Header -->
+            <div class="flex items-center gap-4">
+                <Link :href="route('users.index')" class="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                    <svg class="h-6 w-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </Link>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Add New User</h1>
+                    <p class="text-slate-600 mt-1">Create a new user account</p>
                 </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4">
+                    <h2 class="text-lg font-semibold text-white">User Information</h2>
+                </div>
+                
+                <form @submit.prevent="submit" class="p-6 space-y-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
+                        <input 
+                            v-model="form.name" 
+                            type="text" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                            placeholder="Enter full name" 
+                        />
+                        <InputError :message="form.errors.name" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
+                        <input 
+                            v-model="form.email" 
+                            type="email" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                            placeholder="Enter email address" 
+                        />
+                        <InputError :message="form.errors.email" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+                        <input 
+                            v-model="form.password" 
+                            type="password" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                            placeholder="Enter password" 
+                        />
+                        <InputError :message="form.errors.password" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Confirm Password</label>
+                        <input 
+                            v-model="form.password_confirmation" 
+                            type="password" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                            placeholder="Confirm password" 
+                        />
+                        <InputError :message="form.errors.password_confirmation" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">User Role</label>
+                        <select 
+                            v-model="form.role" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400"
+                        >
+                            <option value="Default">Default User</option>
+                            <option value="Admin">Administrator</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-4">
+                        <PrimaryButton type="submit" class="flex-1">
+                            <svg class="h-5 w-5 shrink-0 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Create User
+                        </PrimaryButton>
+                        <Link :href="route('users.index')" class="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all duration-200">
+                            Cancel
+                        </Link>
+                    </div>
+                </form>
             </div>
         </div>
     </AuthenticatedLayout>

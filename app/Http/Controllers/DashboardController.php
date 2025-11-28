@@ -25,7 +25,8 @@ class DashboardController extends Controller
                 my_site.updated_at as updated_at, 
                 users.name as name, 
                 last_build_success,
-                last_build_fail
+                last_build_fail,
+                port_pm2
             ')
             ->join('users', 'my_site.last_user_build', '=', 'users.id')
             ->get();

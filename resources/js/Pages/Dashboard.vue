@@ -19,9 +19,9 @@ defineProps({
         </template>
 
 
-        <div class="py-12">
-            <div class="max-w-10xl mx-auto sm:px-12 lg:px-12 space-y-12">
-                <div class="p-8 sm:p-12 bg-white shadow sm:rounded-lg">
+        <div class="py-0">
+            <div class="max-w-10xl mx-auto space-y-6">
+                <div class="p-0">
                     <TickerWatchList
                         :mySite="mySite"
                         class="max-w-3xl"
