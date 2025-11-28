@@ -352,17 +352,80 @@ EOT;
     }
 
     /**
-     * Generate or update .env file
+     * Generate or update .env file with dynamic source selection
+     * 
+     * @param string $path Project root path
+     * @param array $custom Custom environment variables to set
+     * @throws \Exception When no valid source .env file exists
      */
     protected function generateEnvFile(string $path, array $custom): void
     {
+        $sourcePath = $this->determineEnvSourcePath($path);
+        $targetPath = rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.env';
+
+        // Copy source to target if target doesn't exist
+        if (!file_exists($targetPath)) {
+            if (!copy($sourcePath, $targetPath)) {
+                throw new \Exception("Failed to copy {$sourcePath} to {$targetPath}");
+            }
+            // Preserve file permissions
+            @chmod($targetPath, 0644);
+        }
+
         // Use EnvManagerService to safely update/create .env values
         try {
             $envService = app(EnvManagerService::class);
             $envService->updateOrCreateEnv($path, $custom);
         } catch (\Exception $e) {
             // Log exception silently; building should continue but admin should be notified in more advanced flows
+            \Log::warning('Failed to update .env file', ['error' => $e->getMessage(), 'path' => $path]);
         }
+    }
+
+    /**
+     * Determine the appropriate .env source file based on APP_ENV_BUILD parameter
+     * 
+     * @param string $path Project root path
+     * @return string Absolute path to the source .env file
+     * @throws \Exception When no valid source file exists
+     */
+    protected function determineEnvSourcePath(string $path): string
+    {
+        $projectRoot = rtrim($path, DIRECTORY_SEPARATOR);
+        $appEnvBuild = $this->getParameter('APP_ENV_BUILD', '');
+
+        // Determine source file based on parameter
+        $sourceFile = match (strtolower(trim($appEnvBuild))) {
+            'prod' => '.env.prod',
+            'dev' => '.env.dev',
+            default => '.env.example',
+        };
+
+        $sourcePath = $projectRoot . DIRECTORY_SEPARATOR . $sourceFile;
+
+        // Validate source file exists
+        if (file_exists($sourcePath)) {
+            return $sourcePath;
+        }
+
+        // Fallback to .env.example if preferred source doesn't exist
+        if ($sourceFile !== '.env.example') {
+            \Log::warning("Preferred source file {$sourceFile} not found, falling back to .env.example", [
+                'path' => $sourcePath,
+                'appEnvBuild' => $appEnvBuild
+            ]);
+
+            $fallbackPath = $projectRoot . DIRECTORY_SEPARATOR . '.env.example';
+            if (file_exists($fallbackPath)) {
+                return $fallbackPath;
+            }
+        }
+
+        // No valid source file found - throw exception
+        throw new \Exception(
+            "No valid .env source file found. Checked: {$sourcePath}" . 
+            ($sourceFile !== '.env.example' ? " and {$projectRoot}/.env.example" : '')
+        );
     }
 
     /**

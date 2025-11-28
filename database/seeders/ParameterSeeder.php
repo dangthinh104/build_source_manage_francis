@@ -49,6 +49,12 @@ class ParameterSeeder extends Seeder
                 'type' => 'boolean',
                 'description' => 'Run npm install during build process',
             ],
+            [
+                'key' => 'APP_ENV_BUILD',
+                'value' => 'dev',
+                'type' => 'string',
+                'description' => 'Defines the source .env file to copy from. Values: "dev" (.env.dev), "prod" (.env.prod). Default is .env.example.',
+            ],
         ];
 
         foreach ($parameters as $param) {
