@@ -27,7 +27,10 @@ class UserController extends Controller
     public function index()
     {
         $users = User ::all();
-        return Inertia ::render('Users/Index', ['users' => $users]);
+        return Inertia ::render('Users/Index', [
+            'users' => $users,
+            'can_manage_users' => auth()->user()->isSuperAdmin(),
+        ]);
     }
 
     public function create()
@@ -99,19 +102,68 @@ class UserController extends Controller
     }
 
     public function destroy($id) {
-
-        $data = [
-          'status' => true,
-          'message' => 'User deleted successfully'
-        ];
-
-        $user = User ::findOrFail($id);
-        // Only super_admin can delete users
+        // Strictly ensure ONLY super admin can delete users
         if (!auth()->user()->isSuperAdmin()) {
-            return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden. Only Super Admin can delete users.'
+            ], 403);
         }
 
+        $user = User ::findOrFail($id);
         $user->delete();
-        return response()->json($data);
+        
+        return response()->json([
+            'status' => true,
+            'message' => 'User deleted successfully'
+        ]);
+    }
+
+    /**
+     * Toggle two-factor authentication for a user.
+     * Only accessible by Super Admin.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function toggleTwoFactor(Request $request, $id)
+    {
+        // Strictly ensure ONLY super admin can toggle 2FA
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden. Only Super Admin can manage 2FA.'
+            ], 403);
+        }
+
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'enable' => 'required|boolean',
+        ]);
+
+        if ($request->input('enable')) {
+            // Enable 2FA - Generate a generic secret
+            // User will need to scan QR code on next login
+            $secret = bin2hex(random_bytes(32)); // Generate a 64-character hex secret
+            $user->two_factor_secret = encrypt($secret);
+            $user->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => '2FA enabled for user. User must scan QR code on next login.',
+            ]);
+        } else {
+            // Disable 2FA
+            $user->two_factor_secret = null;
+            $user->two_factor_recovery_codes = null;
+            $user->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => '2FA disabled for user.',
+            ]);
+        }
     }
 }

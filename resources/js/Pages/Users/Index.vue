@@ -1,37 +1,129 @@
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 import axios from 'axios';
 import InputError from "@/Components/InputError.vue";
+import { toast } from 'vue3-toastify';
+
+const page = usePage();
 const props = defineProps({
     users: Array,
+    can_manage_users: Boolean,
 });
+
 const successMessage = ref('');
-// Delete user with confirmation
-const confirmDelete = (userId) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-        deleteUser(userId);
-    }
+const processingTwoFactor = ref({});
+const showConfirmModal = ref(false);
+const confirmModalData = ref({
+    title: '',
+    message: '',
+    confirmText: '',
+    confirmClass: '',
+    onConfirm: null,
+});
+
+// Check if current user is super admin
+const isSuperAdmin = computed(() => {
+    const role = page.props.auth?.user?.role;
+    return role === 'super_admin';
+});
+
+// Show confirmation modal
+const showConfirmation = (options) => {
+    confirmModalData.value = options;
+    showConfirmModal.value = true;
 };
+
+const closeConfirmModal = () => {
+    showConfirmModal.value = false;
+};
+
+const handleConfirm = () => {
+    if (confirmModalData.value.onConfirm) {
+        confirmModalData.value.onConfirm();
+    }
+    closeConfirmModal();
+};
+
+// Delete user with confirmation
+const confirmDelete = (userId, userName) => {
+    showConfirmation({
+        title: 'Delete User',
+        message: `Are you sure you want to delete "${userName}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        confirmClass: 'bg-red-600 hover:bg-red-700',
+        onConfirm: () => deleteUser(userId),
+    });
+};
+
 // Delete user with axios
 const deleteUser = async (userId) => {
     try {
         const response = await axios.post(route('users.destroy', userId));
 
         if (response.status === 200) {
-
             if (response.data.status === true) {
-                window.location.reload(); // Optionally reload page to reflect changes or remove user from list
+                toast.success(response.data.message);
+                setTimeout(() => window.location.reload(), 500);
             } else {
-                // On success, display message and reload users list
                 successMessage.value = response.data.message;
+                toast.error(response.data.message);
             }
         }
     } catch (error) {
         console.error('Failed to delete user:', error);
-        alert('Error: Could not delete user.');
+        const errorMsg = error.response?.data?.message || 'Error: Could not delete user.';
+        toast.error(errorMsg);
+    }
+};
+
+// Toggle 2FA for user
+const confirmToggleTwoFactor = (userId, userName, currentStatus) => {
+    if (!isSuperAdmin.value) {
+        toast.error('Only Super Admin can manage 2FA');
+        return;
+    }
+
+    const action = currentStatus ? 'Disable' : 'Enable';
+    const message = currentStatus 
+        ? `Are you sure you want to disable 2FA for "${userName}"?` 
+        : `Are you sure you want to enable 2FA for "${userName}"? They will need to scan a QR code on their next login.`;
+    
+    showConfirmation({
+        title: `${action} Two-Factor Authentication`,
+        message: message,
+        confirmText: action,
+        confirmClass: currentStatus ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700',
+        onConfirm: () => toggleTwoFactor(userId, currentStatus),
+    });
+};
+
+const toggleTwoFactor = async (userId, currentStatus) => {
+    processingTwoFactor.value[userId] = true;
+
+    try {
+        const response = await axios.post(route('users.toggle_two_factor', userId), {
+            enable: !currentStatus
+        });
+
+        if (response.data.status === true) {
+            toast.success(response.data.message);
+            // Update the user in the list without full reload
+            const userIndex = props.users.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+                props.users[userIndex].two_factor_secret = !currentStatus ? 'enabled' : null;
+            }
+        } else {
+            toast.error(response.data.message || 'Failed to toggle 2FA');
+        }
+    } catch (error) {
+        console.error('Failed to toggle 2FA:', error);
+        const errorMsg = error.response?.data?.message || 'Error: Could not toggle 2FA.';
+        toast.error(errorMsg);
+    } finally {
+        processingTwoFactor.value[userId] = false;
     }
 };
 </script>
@@ -101,6 +193,14 @@ const deleteUser = async (userId) => {
                                         Role
                                     </div>
                                 </th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        2FA
+                                    </div>
+                                </th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -124,6 +224,33 @@ const deleteUser = async (userId) => {
                                         {{ user.role }}
                                     </span>
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center justify-center">
+                                        <button
+                                            v-if="isSuperAdmin"
+                                            @click="confirmToggleTwoFactor(user.id, user.name, user.two_factor_secret !== null)"
+                                            :disabled="processingTwoFactor[user.id]"
+                                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            :class="user.two_factor_secret ? 'bg-indigo-600' : 'bg-slate-200'"
+                                        >
+                                            <span class="sr-only">Toggle 2FA</span>
+                                            <span
+                                                class="inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200"
+                                                :class="user.two_factor_secret ? 'translate-x-6' : 'translate-x-1'"
+                                            />
+                                        </button>
+                                        <span
+                                            v-else
+                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                                            :class="user.two_factor_secret ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'"
+                                        >
+                                            <svg v-if="user.two_factor_secret" class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                            {{ user.two_factor_secret ? 'Enabled' : 'Disabled' }}
+                                        </span>
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
                                         <Link
@@ -136,7 +263,8 @@ const deleteUser = async (userId) => {
                                             <span>Edit</span>
                                         </Link>
                                         <button
-                                            @click="confirmDelete(user.id)"
+                                            v-if="isSuperAdmin"
+                                            @click="confirmDelete(user.id, user.name)"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-all duration-200"
                                         >
                                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +276,7 @@ const deleteUser = async (userId) => {
                                 </td>
                             </tr>
                             <tr v-if="users.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center">
+                                <td colspan="5" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-slate-500">
                                         <svg class="h-12 w-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -163,5 +291,82 @@ const deleteUser = async (userId) => {
                 </div>
             </div>
         </div>
+
+        <!-- Confirmation Modal -->
+        <Teleport to="body">
+            <Transition name="modal">
+                <div v-if="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto">
+                    <div class="flex min-h-screen items-center justify-center p-4">
+                        <!-- Backdrop -->
+                        <div 
+                            class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+                            @click="closeConfirmModal"
+                        ></div>
+                        
+                        <!-- Modal -->
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+                            <!-- Icon -->
+                            <div class="flex justify-center mb-4">
+                                <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Content -->
+                            <div class="text-center mb-6">
+                                <h3 class="text-xl font-semibold text-slate-900 mb-2">
+                                    {{ confirmModalData.title }}
+                                </h3>
+                                <p class="text-sm text-slate-600">
+                                    {{ confirmModalData.message }}
+                                </p>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex gap-3">
+                                <button
+                                    @click="closeConfirmModal"
+                                    class="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors duration-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    @click="handleConfirm"
+                                    class="flex-1 px-4 py-2.5 text-white rounded-xl font-medium shadow-lg transition-all duration-200"
+                                    :class="confirmModalData.confirmClass"
+                                >
+                                    {{ confirmModalData.confirmText }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.modal-enter-active,
+.modal-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+    opacity: 0;
+}
+
+.modal-enter-active .relative,
+.modal-leave-active .relative {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.modal-enter-from .relative,
+.modal-leave-to .relative {
+    transform: scale(0.95);
+    opacity: 0;
+}
+</style>

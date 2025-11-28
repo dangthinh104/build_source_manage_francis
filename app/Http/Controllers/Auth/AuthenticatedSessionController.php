@@ -45,6 +45,28 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Get the authenticated user
+        $user = Auth::user();
+
+        // Check if 2FA is enabled for this user
+        if ($user && $user->two_factor_secret !== null) {
+            // Check if device is remembered (skip 2FA if verified within 1 day)
+            $rememberedDevice = $request->cookie('device_2fa_remembered_' . $user->id);
+            
+            if (!$rememberedDevice || $rememberedDevice !== hash('sha256', $user->id . $user->email)) {
+                // 2FA is required and device is not remembered
+                // Log out the user temporarily
+                Auth::logout();
+                
+                // Store user ID in session for 2FA verification
+                $request->session()->put('auth.2fa.id', $user->id);
+                $request->session()->put('auth.2fa.remember', $request->boolean('remember'));
+                
+                return redirect()->route('2fa.verify');
+            }
+        }
+
+        // Either 2FA is not enabled or device is remembered - proceed with normal login
         $request->session()->regenerate();
         $request->session()->regenerateToken();
 

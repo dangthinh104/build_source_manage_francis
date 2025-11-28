@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
     Route::post('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('/users/{id}/toggle-two-factor', [UserController::class, 'toggleTwoFactor'])->name('users.toggle_two_factor');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/my-sites', [MySiteController::class, 'index'])->name('my_site.index');
 

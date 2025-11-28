@@ -23,6 +23,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -33,6 +35,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -66,5 +70,15 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return strtolower($this->role ?? '') === 'super_admin';
+    }
+
+    /**
+     * Check if the user has enabled two-factor authentication.
+     *
+     * @return bool
+     */
+    public function hasEnabledTwoFactor(): bool
+    {
+        return !is_null($this->two_factor_secret);
     }
 }
