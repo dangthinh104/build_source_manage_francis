@@ -110,10 +110,10 @@ class SiteBuildService
         // Get shell script path
         $pathSH = $this->storage->path($siteObject->sh_content_dir);
 
-        // Execute shell script
+        // Execute shell script with escaped path to prevent injection
         $output = [];
         $returnVar = null;
-        exec("sudo /bin/bash {$pathSH} 2>&1", $output, $returnVar);
+        exec("sudo /bin/bash " . escapeshellarg($pathSH) . " 2>&1", $output, $returnVar);
 
         // Prepare update data
         $update = [
@@ -290,6 +290,9 @@ class SiteBuildService
 
         $npmInstallStep = $npmInstallOnBuild ? "echo \"-----\$(date): NPM Install-----\" >> \$LOG_FILE\nsudo npm install >> \$LOG_FILE 2>&1\n\n" : '';
 
+        // Escape folder path for safe use in shell script
+        $escapedFolderPath = escapeshellarg($folderSourcePath);
+        
         return <<<EOT
 #!/bin/bash
 time="\$(date +%s)"
@@ -298,8 +301,8 @@ touch \$LOG_FILE
 
 echo "-----\$(date): Start script-----" >> \$LOG_FILE
 
-echo "-----\$(date): cd {$folderSourcePath} -----" >> \$LOG_FILE
-cd {$folderSourcePath} >> \$LOG_FILE 2>&1
+echo "-----\$(date): cd {$escapedFolderPath} -----" >> \$LOG_FILE
+cd {$escapedFolderPath} >> \$LOG_FILE 2>&1
 if [ \$? -ne 0 ]; then
     echo "Error: Failed to change directory" >> \$LOG_FILE
     echo \$time

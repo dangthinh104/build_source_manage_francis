@@ -115,7 +115,6 @@ const addNewSite = () => {
 const updateMySetting = async () => {
     try {
         const response = await axios.post(route('my_site.update'), detailSite);
-        console.warn(response)
     } catch (error) {
         console.error("Error fetching suggestions:", error);
     } finally {
@@ -161,12 +160,13 @@ const closeHistory = () => {
     historyModalShow.value = false;
 };
 
-const onOpenHistoryLog = (history) => {
-    // reuse existing log modal content
-    details.log_content = history.output_log;
-    details.site_name = detailSite.site_name || '';
-    details.path_log = '';
+const onOpenHistoryLog = (logData) => {
+    // Handle both build history and filesystem logs
+    details.log_content = logData.content || logData.output_log || '';
+    details.site_name = logData.filename || 'Log Viewer';
+    details.path_log = logData.path || '';
     confirmingViewLog.value = true;
+    historyModalShow.value = false;
 };
 
 const confirmDeleteSite = (site) => {

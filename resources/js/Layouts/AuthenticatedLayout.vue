@@ -4,6 +4,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
+import { toast } from 'vue3-toastify';
 
 const page = usePage();
 const desktopSidebarCollapsed = ref(false);
@@ -80,6 +81,22 @@ onUnmounted(() => {
 });
 
 watch(() => preferences.value.theme_color, (val) => applyTheme(val));
+
+// Watch for flash messages and display toasts automatically
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        toast(flash.success, { type: 'success', autoClose: 3000 });
+    }
+    if (flash?.error) {
+        toast(flash.error, { type: 'error', autoClose: 5000 });
+    }
+    if (flash?.warning) {
+        toast(flash.warning, { type: 'warning', autoClose: 4000 });
+    }
+    if (flash?.info) {
+        toast(flash.info, { type: 'info', autoClose: 3000 });
+    }
+}, { deep: true });
 
 // Theme color classes (fallback names still available for components that use them)
 const themeColors = computed(() => {

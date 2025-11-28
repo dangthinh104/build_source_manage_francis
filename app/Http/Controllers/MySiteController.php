@@ -28,10 +28,10 @@ class MySiteController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'site_name' => 'required|string',
-            'folder_source_path' => 'required|string',
+            'site_name' => 'required|string|max:255',
+            'folder_source_path' => ['required', 'string', 'max:500', 'regex:/^\/[a-zA-Z0-9\/_-]+$/', 'not_regex:/\.\.\//'],
             'include_pm2' => 'boolean',
-            'port_pm2' => 'nullable|string',
+            'port_pm2' => 'nullable|string|max:10',
         ]);
 
         try {
@@ -183,6 +183,90 @@ class MySiteController extends Controller
                 });
 
             return response()->json(['histories' => $histories]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function getSiteLogs(Request $request): JsonResponse
+    {
+        try {
+            $request->validate(['site_id' => 'required|integer']);
+            $siteId = $request->input('site_id');
+
+            $site = \DB::table('my_site')->where('id', $siteId)->first();
+            if (!$site) {
+                throw new \Exception('Site not found');
+            }
+
+            // Get log directory path for this site
+            $storage = Storage::disk('my_site_storage');
+            $logDirectory = $site->site_name . '/log';
+
+            if (!$storage->exists($logDirectory)) {
+                return response()->json(['logs' => []]);
+            }
+
+            // Get all .log files in the directory
+            $files = $storage->files($logDirectory);
+            $logs = [];
+
+            foreach ($files as $file) {
+                if (str_ends_with($file, '.log')) {
+                    $filename = basename($file);
+                    $lastModified = $storage->lastModified($file);
+                    
+                    $logs[] = [
+                        'filename' => $filename,
+                        'path' => $file,
+                        'date' => date('Y-m-d H:i:s', $lastModified),
+                        'timestamp' => $lastModified,
+                    ];
+                }
+            }
+
+            // Sort by timestamp (newest first)
+            usort($logs, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+
+            return response()->json(['logs' => $logs]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function viewLogFile(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'site_id' => 'required|integer',
+                'log_path' => 'required|string',
+            ]);
+
+            $siteId = $request->input('site_id');
+            $logPath = $request->input('log_path');
+
+            $site = \DB::table('my_site')->where('id', $siteId)->first();
+            if (!$site) {
+                throw new \Exception('Site not found');
+            }
+
+            $storage = Storage::disk('my_site_storage');
+
+            // Security check: ensure the log path belongs to this site
+            if (!str_starts_with($logPath, $site->site_name . '/log/')) {
+                throw new \Exception('Invalid log path');
+            }
+
+            if (!$storage->exists($logPath)) {
+                throw new \Exception('Log file not found');
+            }
+
+            $content = $storage->get($logPath);
+
+            return response()->json([
+                'filename' => basename($logPath),
+                'content' => $content,
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }

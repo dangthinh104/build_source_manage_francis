@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-site-log-details', [MySiteController::class, 'getLogLastBuildByID'])->name('my_site.get_content_log');
     Route::post('/my-site-open-detail', [MySiteController::class, 'getAllDetailSiteByID'])->name('my_site.open_popup_detail');
     Route::post('/my-site-history', [MySiteController::class, 'getBuildHistoryBySite'])->name('my_site.history');
+    Route::post('/my-site-logs', [MySiteController::class, 'getSiteLogs'])->name('my_site.logs');
+    Route::post('/my-site-view-log', [MySiteController::class, 'viewLogFile'])->name('my_site.view_log');
     Route::post('/my-site-update', [MySiteController::class, 'update'])->name('my_site.update');
     Route::post('/my-site-build', [MySiteController::class, 'buildMySite'])->name('my_site.build_my_site');
     Route::post('/my-site-delete', [MySiteController::class, 'deleteSite'])->name('my_site.delete');
