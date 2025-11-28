@@ -19,7 +19,7 @@
           <h1 class="text-2xl font-bold text-slate-900">Parameters</h1>
           <p class="text-slate-600 mt-1">Manage application parameters and feature flags</p>
         </div>
-        <button @click="openCreate" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5">
+        <button @click="openCreate" class="inline-flex items-center gap-2 px-5 py-2.5 btn-primary text-white rounded-xl font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
           <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
@@ -43,7 +43,7 @@
               <tr v-for="param in parameters" :key="param.id" class="hover:bg-slate-50 transition-colors duration-150">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
-                    <div class="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                    <div class="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
                       {{ param.key.charAt(0).toUpperCase() }}
                     </div>
                     <div class="ml-4">
@@ -60,7 +60,7 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{{ param.description }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end gap-2">
-                    <button @click="openEdit(param)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-all duration-200">
+                    <button @click="openEdit(param)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary rounded-lg font-medium hover:bg-primary-50 transition-all duration-200">
                       <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>

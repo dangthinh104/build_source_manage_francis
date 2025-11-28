@@ -30,20 +30,23 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        
+
         // Load preference relationship if user exists
         if ($user) {
             $user->load('preference');
         }
-        
+
+        $sharedPreferences = $user && $user->preference
+            ? $user->preference
+            : (object) \App\Models\UserPreference::getDefaults();
+
+        // Attach preferences both as a top-level prop and under auth.user for compatibility
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user,
+                'user' => $user ? $user->toArray() + ['preference' => $sharedPreferences] : null,
             ],
-            'preferences' => $user && $user->preference 
-                ? $user->preference 
-                : (object) \App\Models\UserPreference::getDefaults(),
+            'preferences' => $sharedPreferences,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

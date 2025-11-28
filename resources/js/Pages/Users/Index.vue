@@ -62,7 +62,7 @@ const deleteUser = async (userId) => {
                 </div>
                 <Link
                     :href="route('users.create')"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 btn-primary text-white rounded-xl font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
                 >
                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -108,7 +108,7 @@ const deleteUser = async (userId) => {
                             <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50 transition-colors duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <div class="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                                        <div class="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
                                             {{ user.name.charAt(0).toUpperCase() }}
                                         </div>
                                         <div class="ml-4">
@@ -120,7 +120,7 @@ const deleteUser = async (userId) => {
                                     <div class="text-sm text-slate-600">{{ user.email }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium" :class="user.role === 'Admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium" :class="user.role === 'Admin' ? 'bg-primary-50 text-primary' : 'bg-slate-100 text-slate-700'">
                                         {{ user.role }}
                                     </span>
                                 </td>
@@ -128,7 +128,7 @@ const deleteUser = async (userId) => {
                                     <div class="flex items-center justify-end gap-2">
                                         <Link
                                             :href="route('users.edit', user.id)"
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-all duration-200"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary rounded-lg font-medium hover:bg-primary-50 transition-all duration-200"
                                         >
                                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

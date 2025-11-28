@@ -1,9 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 
 const page = usePage();
 const desktopSidebarCollapsed = ref(false);
@@ -18,7 +18,67 @@ const preferences = computed(() => page.props.preferences || {
     compact_mode: false
 });
 
-// Theme color classes
+// Apply CSS variables for theme colors
+const applyTheme = (themeColor) => {
+    const root = document.documentElement;
+    // Map a few primary shades; these can be expanded or made configurable
+    const map = {
+        indigo: {
+            '--color-primary': '79 70 229', // indigo-600 rgb(79 70 229)
+            '--color-primary-500': '99 102 241',
+            '--color-primary-50': '238 242 255'
+        },
+        blue: {
+            '--color-primary': '37 99 235', // blue-600
+            '--color-primary-500': '59 130 246',
+            '--color-primary-50': '240 249 255'
+        },
+        green: {
+            '--color-primary': '16 185 129', // emerald-500 approximated
+            '--color-primary-500': '34 197 94',
+            '--color-primary-50': '240 253 244'
+        },
+        rose: {
+            '--color-primary': '244 63 94',
+            '--color-primary-500': '251 113 133',
+            '--color-primary-50': '255 240 242'
+        }
+    };
+
+    const theme = map[themeColor] || map['indigo'];
+    Object.entries(theme).forEach(([k, v]) => root.style.setProperty(k, v));
+}
+
+// Global loading state for Inertia navigations
+const isLoading = ref(false);
+
+const startHandler = () => {
+    isLoading.value = true;
+};
+
+const finishHandler = () => {
+    isLoading.value = false;
+};
+
+// set on mounted and react to changes
+onMounted(() => {
+    applyTheme(preferences.value.theme_color);
+    router.on('start', startHandler);
+    router.on('finish', finishHandler);
+});
+
+onUnmounted(() => {
+    try {
+        router.off('start', startHandler);
+        router.off('finish', finishHandler);
+    } catch (e) {
+        // ignore if router.off not available
+    }
+});
+
+watch(() => preferences.value.theme_color, (val) => applyTheme(val));
+
+// Theme color classes (fallback names still available for components that use them)
 const themeColors = computed(() => {
     const color = preferences.value.theme_color || 'indigo';
     return {
@@ -114,6 +174,17 @@ const closeMobileSidebar = () => {
 
 <template>
     <div class="min-h-screen bg-slate-100 text-slate-900" @keydown.esc.window="closeMobileSidebar">
+        <Transition name="fade">
+            <div v-if="isLoading" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div class="flex flex-col items-center gap-4">
+                    <svg class="animate-spin h-16 w-16 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    <p class="text-white text-sm">Loading…</p>
+                </div>
+            </div>
+        </Transition>
         <div class="flex min-h-screen">
             <aside
                 class="hidden md:flex flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white shadow-2xl shadow-slate-900/50 transition-all duration-300 relative"
@@ -154,8 +225,8 @@ const closeMobileSidebar = () => {
                         class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
                         :class="[
                             isActive(item)
-                                ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/40 ring-2 ring-indigo-400/20'
-                                : 'text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-md',
+                                ? 'nav-active text-white'
+                                : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md',
                             desktopSidebarCollapsed ? 'justify-center px-0' : '',
                         ]"
                     >
@@ -217,11 +288,7 @@ const closeMobileSidebar = () => {
                             :key="`mobile-${item.key}`"
                             :href="route(item.routeName)"
                             class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
-                            :class="
-                                isActive(item)
-                                    ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/40 ring-2 ring-indigo-400/20'
-                                    : 'text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-md'
-                            "
+                            :class="isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md'"
                             @click="closeMobileSidebar"
                         >
                             <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">

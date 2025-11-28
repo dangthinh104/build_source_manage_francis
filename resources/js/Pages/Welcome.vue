@@ -39,7 +39,7 @@ const featureCards = [
         <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10 lg:py-16">
             <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-indigo-500">FRANCIS BUILD MANAGE</p>
+                    <p class="text-sm font-semibold text-primary">FRANCIS BUILD MANAGE</p>
                     <h1 class="text-2xl font-bold text-slate-900">Operate every rental house from one glass pane.</h1>
                 </div>
 
@@ -52,7 +52,7 @@ const featureCards = [
                         <Link
                             v-if="props.canRegister"
                             :href="route('register')"
-                            class="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+                            class="rounded-full btn-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:btn-primary-overlay"
                         >
                             Get started
                         </Link>
@@ -96,7 +96,7 @@ const featureCards = [
                     </div>
                 </div>
 
-                <div class="rounded-3xl bg-gradient-to-br from-indigo-500 via-indigo-400 to-sky-400 p-8 text-white shadow-2xl shadow-indigo-500/40">
+                <div class="rounded-3xl p-8 text-white shadow-2xl" style="background: linear-gradient(90deg, rgb(var(--color-primary)), rgb(var(--color-primary-500))); box-shadow: 0 30px 60px rgb(var(--color-primary) / 0.25);">
                     <p class="text-sm uppercase tracking-[0.3em] text-white/80">Realtime overview</p>
                     <div class="mt-8 space-y-6">
                         <div class="rounded-2xl bg-white/15 p-4">
@@ -126,7 +126,7 @@ const featureCards = [
                     :key="card.title"
                     class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100"
                 >
-                    <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                    <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                             <path :d="card.icon" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>

@@ -27,7 +27,7 @@
                                                 </div>
                                                 <div class="flex justify-end">
                                                         <button @click="$emit('close')" type="button" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Cancel</button>
-                                                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">{{ mode === 'create' ? 'Create' : 'Update' }}</button>
+                                                        <button type="submit" class="btn-primary text-white px-4 py-2 rounded">{{ mode === 'create' ? 'Create' : 'Update' }}</button>
                                                 </div>
                                         </form>
                                 </div>

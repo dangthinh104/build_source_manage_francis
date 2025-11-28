@@ -151,7 +151,7 @@ const buildSite = async (siteID,index) => {
 <template>
     <section class="space-y-10" style="max-width: 100rem;">
         <header class="space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-500">Sites</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Sites</p>
             <h2 class="text-2xl font-semibold text-slate-900">Stay in sync with every build</h2>
             <p class="text-sm text-slate-600">Register new sites, monitor PM2 ports, and trigger builds with live feedback.</p>
         </header>
@@ -165,7 +165,7 @@ const buildSite = async (siteID,index) => {
                         id="site_name"
                         v-model="form.site_name"
                         name="site_name"
-                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
                         placeholder="example.francis.house"
                     >
                     <InputError :message="form.errors.site_name" class="mt-2" />
@@ -178,7 +178,7 @@ const buildSite = async (siteID,index) => {
                         id="folder_source_path"
                         v-model="form.folder_source_path"
                         name="folder_source_path"
-                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
                         placeholder="/var/www/html/sites/acme"
                     >
                     <InputError :message="form.errors.folder_source_path" class="mt-2" />
@@ -196,7 +196,7 @@ const buildSite = async (siteID,index) => {
                         type="text"
                         id="port_pm2"
                         v-model="form.port_pm2"
-                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
                         placeholder="3001"
                     >
                     <InputError :message="form.errors.port_pm2" class="mt-2" />
@@ -237,11 +237,11 @@ const buildSite = async (siteID,index) => {
                             v-for="(site, index) in mySite"
                             :key="site.id"
                             :class="index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'"
-                            class="transition hover:bg-indigo-50/40"
+                            class="transition hover:bg-primary-50"
                         >
                             <td class="px-6 py-4 font-semibold text-slate-800">#{{ site.id }}</td>
                             <td class="px-6 py-4">
-                                <a :href="`https://${site.site_name}`" target="_blank" class="font-medium text-indigo-600 hover:underline">
+                                <a :href="`https://${site.site_name}`" target="_blank" class="font-medium text-primary hover:underline">
                                     {{ site.site_name }}
                                 </a>
                                 <p class="text-xs text-slate-500">Port {{ site.port_pm2 || '—' }}</p>
@@ -249,7 +249,7 @@ const buildSite = async (siteID,index) => {
                             <td class="px-6 py-4">
                                 <button
                                     @click="onOpenLogDetails(site.id)"
-                                    class="inline-flex items-center gap-1 rounded-full border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+                                    class="inline-flex items-center gap-1 rounded-full border border-primary px-3 py-1 text-xs font-semibold text-primary hover:bg-primary-50"
                                 >
                                     View log
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,7 +325,7 @@ const buildSite = async (siteID,index) => {
                             <input
                                 v-model="detailSite.port_pm2"
                                 type="text"
-                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
                             />
                         </div>
                         <div>
@@ -333,7 +333,7 @@ const buildSite = async (siteID,index) => {
                             <input
                                 v-model="detailSite.api_endpoint_url"
                                 type="text"
-                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
                             />
                         </div>
                     </div>

@@ -56,15 +56,15 @@ const downloadLog = async () => {
                             <!-- Back Button to return to the previous folder -->
                             <Link
                                 :href="route('logs.index', { subfolder })"
-                                class="text-blue-500 underline"
+                                class="text-primary underline"
                             >
                                 Back to Folder
                             </Link>
                         </div>
 
-                        <pre class="bg-gray-200 p-4 rounded shadow overflow-auto max-h-96 " style="min-height:100rem">
-        {{ content }}
-      </pre>
+                        <pre class="bg-gray-900 text-white font-mono p-4 rounded shadow overflow-auto max-h-96">
+                        {{ content }}
+                    </pre>
 
                         <div class="mt-4">
                             <PrimaryButton @click="downloadLog">Download</PrimaryButton>

@@ -31,7 +31,7 @@ const previousSubfolder = computed(() => {
                     <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
-                    <Link v-if="subfolder" :href="route('logs.index', { subfolder: previousSubfolder })" class="text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                    <Link v-if="subfolder" :href="route('logs.index', { subfolder: previousSubfolder })" class="text-primary hover:text-primary font-medium transition-colors">
                         <svg class="h-4 w-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
@@ -56,10 +56,10 @@ const previousSubfolder = computed(() => {
                             v-for="folder in folders"
                             :key="folder"
                             :href="route('logs.index', { subfolder: (subfolder ? subfolder + '/' : '') + folder })"
-                            class="flex items-center gap-3 p-4 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl hover:shadow-md hover:border-indigo-300 hover:-translate-y-0.5 transition-all duration-200"
+                            class="flex items-center gap-3 p-4 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl hover:shadow-md hover:border-primary hover:-translate-y-0.5 transition-all duration-200"
                         >
-                            <div class="h-10 w-10 shrink-0 rounded-lg bg-indigo-100 flex items-center justify-center">
-                                <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="h-10 w-10 shrink-0 rounded-lg bg-primary-50 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                 </svg>
                             </div>
@@ -96,7 +96,7 @@ const previousSubfolder = computed(() => {
                         <div class="flex items-center gap-2">
                             <Link
                                 :href="route('logs.view', { subfolder, filename: file })"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-all duration-200"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary rounded-lg font-medium hover:bg-primary-50 transition-all duration-200"
                             >
                                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
