@@ -63,14 +63,19 @@ class UserController extends Controller
             'role'     => 'required|in:user,admin,super_admin',
         ]);
 
+        // Generate 2FA secret by default for new users
+        $secret = bin2hex(random_bytes(32));
+
         User ::create([
             'name'     => $validated['name'],
             'email'    => $validated['email'],
             'password' => bcrypt($validated['password']),
             'role'     => $validated['role'],
+            'two_factor_secret' => encrypt($secret),
+            'two_factor_enabled' => true,
         ]);
 
-        return redirect() -> route('users.index') -> with('success', 'User added successfully!');
+        return redirect() -> route('users.index') -> with('success', 'User added successfully! 2FA is enabled by default.');
     }
 
 
@@ -148,6 +153,7 @@ class UserController extends Controller
             // User will need to scan QR code on next login
             $secret = bin2hex(random_bytes(32)); // Generate a 64-character hex secret
             $user->two_factor_secret = encrypt($secret);
+            $user->two_factor_enabled = true;
             $user->save();
 
             return response()->json([
@@ -158,6 +164,7 @@ class UserController extends Controller
             // Disable 2FA
             $user->two_factor_secret = null;
             $user->two_factor_recovery_codes = null;
+            $user->two_factor_enabled = false;
             $user->save();
 
             return response()->json([

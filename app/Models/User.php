@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'two_factor_secret',
         'two_factor_recovery_codes',
+        'two_factor_enabled',
     ];
 
     /**
@@ -79,6 +80,6 @@ class User extends Authenticatable
      */
     public function hasEnabledTwoFactor(): bool
     {
-        return !is_null($this->two_factor_secret);
+        return $this->two_factor_enabled && !is_null($this->two_factor_secret);
     }
 }

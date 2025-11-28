@@ -30,6 +30,28 @@
     @apply transition-opacity duration-200;
 }
 
+/* Modal transition animations */
+.modal-enter-active,
+.modal-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+    opacity: 0;
+}
+
+.modal-enter-active .relative,
+.modal-leave-active .relative {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.modal-enter-from .relative,
+.modal-leave-to .relative {
+    transform: scale(0.95);
+    opacity: 0;
+}
+
 /* Page transition animations */
 @layer components {
     .page-enter-active,

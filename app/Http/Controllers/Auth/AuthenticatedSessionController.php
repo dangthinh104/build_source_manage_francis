@@ -49,7 +49,7 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
 
         // Check if 2FA is enabled for this user
-        if ($user && $user->two_factor_secret !== null) {
+        if ($user && $user->two_factor_enabled && $user->two_factor_secret !== null) {
             // Check if device is remembered (skip 2FA if verified within 1 day)
             $rememberedDevice = $request->cookie('device_2fa_remembered_' . $user->id);
             

@@ -52,7 +52,7 @@ class TwoFactorController extends Controller
         // Find the user
         $user = User::find($userId);
 
-        if (!$user || !$user->two_factor_secret) {
+        if (!$user || !$user->two_factor_enabled || !$user->two_factor_secret) {
             return redirect()->route('login')->withErrors([
                 'code' => 'Invalid authentication state.',
             ]);

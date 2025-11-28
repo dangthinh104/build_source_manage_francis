@@ -113,7 +113,7 @@ const toggleTwoFactor = async (userId, currentStatus) => {
             // Update the user in the list without full reload
             const userIndex = props.users.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
-                props.users[userIndex].two_factor_secret = !currentStatus ? 'enabled' : null;
+                props.users[userIndex].two_factor_enabled = !currentStatus;
             }
         } else {
             toast.error(response.data.message || 'Failed to toggle 2FA');
@@ -228,26 +228,26 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                     <div class="flex items-center justify-center">
                                         <button
                                             v-if="isSuperAdmin"
-                                            @click="confirmToggleTwoFactor(user.id, user.name, user.two_factor_secret !== null)"
+                                            @click="confirmToggleTwoFactor(user.id, user.name, user.two_factor_enabled)"
                                             :disabled="processingTwoFactor[user.id]"
                                             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            :class="user.two_factor_secret ? 'bg-indigo-600' : 'bg-slate-200'"
+                                            :class="user.two_factor_enabled ? 'bg-indigo-600' : 'bg-slate-200'"
                                         >
                                             <span class="sr-only">Toggle 2FA</span>
                                             <span
                                                 class="inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200"
-                                                :class="user.two_factor_secret ? 'translate-x-6' : 'translate-x-1'"
+                                                :class="user.two_factor_enabled ? 'translate-x-6' : 'translate-x-1'"
                                             />
                                         </button>
                                         <span
                                             v-else
                                             class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                                            :class="user.two_factor_secret ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'"
+                                            :class="user.two_factor_enabled ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'"
                                         >
-                                            <svg v-if="user.two_factor_secret" class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <svg v-if="user.two_factor_enabled" class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                             </svg>
-                                            {{ user.two_factor_secret ? 'Enabled' : 'Disabled' }}
+                                            {{ user.two_factor_enabled ? 'Enabled' : 'Disabled' }}
                                         </span>
                                     </div>
                                 </td>
@@ -347,26 +347,3 @@ const toggleTwoFactor = async (userId, currentStatus) => {
         </Teleport>
     </AuthenticatedLayout>
 </template>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-    opacity: 0;
-}
-
-.modal-enter-active .relative,
-.modal-leave-active .relative {
-    transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.modal-enter-from .relative,
-.modal-leave-to .relative {
-    transform: scale(0.95);
-    opacity: 0;
-}
-</style>
