@@ -57,4 +57,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\BuildHistory::class, 'user_id');
     }
+
+    public function isAdmin(): bool
+    {
+        return strtolower($this->role ?? '') === 'admin' || strtolower($this->role ?? '') === 'super_admin';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return strtolower($this->role ?? '') === 'super_admin';
+    }
 }

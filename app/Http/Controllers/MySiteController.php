@@ -18,7 +18,7 @@ class MySiteController extends Controller
 
     public function index()
     {
-        $sites = \App\Models\MySite::orderByDesc('created_at')->paginate(15);
+        $sites = \App\Models\MySite::with('lastBuilder')->orderByDesc('created_at')->paginate(15);
 
         return inertia('MySites/Index', [
             'sites' => $sites,
@@ -155,6 +155,66 @@ class MySiteController extends Controller
             return response()->json([
                 'error' => $e->getMessage()
             ], 400);
+        }
+    }
+
+    public function getBuildHistoryBySite(Request $request): JsonResponse
+    {
+        try {
+            if (!$request->has('site_id')) {
+                throw new \Exception('Site ID is required.');
+            }
+
+            $siteId = $request->input('site_id');
+
+            $histories = \App\Models\BuildHistory::where('site_id', $siteId)
+                ->with('user')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($h) {
+                    return [
+                        'id' => $h->id,
+                        'status' => $h->status,
+                        'output_excerpt' => substr($h->output_log, 0, 100),
+                        'created_at' => $h->created_at,
+                        'user_name' => $h->user ? $h->user->name : 'System',
+                        'output_log' => $h->output_log,
+                    ];
+                });
+
+            return response()->json(['histories' => $histories]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function deleteSite(Request $request): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            if (!$user || ($user->role ?? '') !== 'super_admin') {
+                throw new \Exception('Unauthorized', 403);
+            }
+
+            $request->validate([ 'site_id' => 'required|integer' ]);
+            $siteId = $request->input('site_id');
+
+            $site = \DB::table('my_site')->where('id', $siteId)->first();
+            if (!$site) {
+                throw new \Exception('Site not found');
+            }
+
+            $service = app(\App\Services\SiteDestructionService::class);
+            $destroyResult = $service->destroy($site->path_source_code, $site->site_name);
+
+            if ($destroyResult['success']) {
+                \DB::table('my_site')->where('id', $siteId)->delete();
+                return response()->json(['status' => true, 'messages' => $destroyResult['messages']]);
+            }
+
+            return response()->json(['status' => false, 'messages' => $destroyResult['messages']], 500);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], $e->getCode() ?: 400);
         }
     }
 }

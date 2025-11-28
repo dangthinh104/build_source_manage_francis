@@ -25,5 +25,6 @@ class DatabaseSeeder extends Seeder
 
         // Seed default parameters
         $this->call(ParameterSeeder::class);
+        $this->call(\Database\Seeders\SuperAdminSeeder::class);
     }
 }

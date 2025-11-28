@@ -16,4 +16,9 @@ class MySite extends Model
     {
         return $this->hasMany(BuildHistory::class, 'site_id');
     }
+
+    public function lastBuilder()
+    {
+        return $this->belongsTo(User::class, 'last_user_build');
+    }
 }

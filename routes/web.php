@@ -8,7 +8,7 @@ use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPreferenceController;
-use App\Http\Middleware\RoleAdminMiddleware;
+use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -27,8 +27,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-site-store', [MySiteController::class, 'store'])->name('my_site.store');
     Route::post('/my-site-log-details', [MySiteController::class, 'getLogLastBuildByID'])->name('my_site.get_content_log');
     Route::post('/my-site-open-detail', [MySiteController::class, 'getAllDetailSiteByID'])->name('my_site.open_popup_detail');
+    Route::post('/my-site-history', [MySiteController::class, 'getBuildHistoryBySite'])->name('my_site.history');
     Route::post('/my-site-update', [MySiteController::class, 'update'])->name('my_site.update');
     Route::post('/my-site-build', [MySiteController::class, 'buildMySite'])->name('my_site.build_my_site');
+    Route::post('/my-site-delete', [MySiteController::class, 'deleteSite'])->name('my_site.delete');
     Route::resource('users', UserController::class);
     Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
@@ -41,9 +43,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/envVariables/{id}/edit', [EnvVariableController::class, 'edit'])->name('envVariables.edit');
     Route::put('/envVariables/{id}', [EnvVariableController::class, 'update'])->name('envVariables.update');
     Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
-    Route::resource('parameters', ParameterController::class)->only(['index', 'store', 'update', 'destroy']);
+    // Parameters only accessible by super_admin
+    Route::resource('parameters', ParameterController::class)->only(['index', 'store', 'update', 'destroy'])->middleware(\App\Http\Middleware\RoleMiddleware::class . ':super_admin');
 
-})->middleware(RoleAdminMiddleware::class);;
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

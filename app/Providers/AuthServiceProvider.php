@@ -8,7 +8,8 @@ class AuthServiceProvider extends ServiceProvider {
     public function boot()
     {
         Gate::define('isAdmin', function ($user) {
-            return $user->role === 'Admin';
+            $role = strtolower($user->role ?? '');
+            return in_array($role, ['admin', 'super_admin']);
         });
     }
 }

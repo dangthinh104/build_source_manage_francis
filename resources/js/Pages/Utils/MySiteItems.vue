@@ -7,6 +7,7 @@ import { ref, watch} from 'vue';
 import Modal from "@/Components/Modal.vue";
 import axios from "axios";
 import Checkbox from "@/Components/Checkbox.vue";
+import LogHistoryModal from '@/Pages/Utils/LogHistoryModal.vue';
 import { toast } from 'vue3-toastify'
 // defineProps
 defineProps({
@@ -53,6 +54,11 @@ const detailSite = {
     'api_endpoint_url'          : '',
     'id'          : '',
 }
+const historyModalShow = ref(false);
+const historySiteId = ref(null);
+const deleteConfirmShow = ref(false);
+const deleteTarget = ref(null);
+const deleting = ref(false);
 // Function onHandle
 const onOpenLogDetails = async (siteID) => {
     try {
@@ -142,6 +148,49 @@ const buildSite = async (siteID,index) => {
         })
     } finally {
         loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+    }
+};
+
+const openHistory = (siteID) => {
+    historySiteId.value = siteID;
+    historyModalShow.value = true;
+};
+
+const closeHistory = () => {
+    historySiteId.value = null;
+    historyModalShow.value = false;
+};
+
+const onOpenHistoryLog = (history) => {
+    // reuse existing log modal content
+    details.log_content = history.output_log;
+    details.site_name = detailSite.site_name || '';
+    details.path_log = '';
+    confirmingViewLog.value = true;
+};
+
+const confirmDeleteSite = (site) => {
+    deleteTarget.value = site;
+    deleteConfirmShow.value = true;
+};
+
+const performDeleteSite = async () => {
+    try {
+        deleting.value = true;
+        const response = await axios.post(route('my_site.delete'), { site_id: deleteTarget.value.id });
+        if (response.data.status) {
+            toast('Deletion queued — processing in background', { type: 'success' });
+            // Optionally remove row from UI instead of reload
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            toast('Delete failed: ' + (response.data.message || response.data.messages?.join(', ')), { type: 'error' });
+        }
+    } catch (e) {
+        toast('Delete failed', { type: 'error' });
+    } finally {
+        deleting.value = false;
+        deleteConfirmShow.value = false;
+        deleteTarget.value = null;
     }
 };
 
@@ -268,12 +317,13 @@ const buildSite = async (siteID,index) => {
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-slate-500">
-                                <p class="font-medium text-slate-700">{{ site.name || '—' }}</p>
+                                <p class="font-medium text-slate-700">{{ site.lastBuilder ? site.lastBuilder.name : '—' }}</p>
                                 <p class="text-xs">{{ site.last_build || 'No history' }}</p>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <SecondaryButton class="text-xs" @click="openSiteDetailDialog(site.id, index)">Details</SecondaryButton>
+                                    <SecondaryButton class="text-xs" @click="openHistory(site.id)">History</SecondaryButton>
                                     <PrimaryButton
                                         class="text-xs"
                                         type="button"
@@ -283,6 +333,7 @@ const buildSite = async (siteID,index) => {
                                     >
                                         Build
                                     </PrimaryButton>
+                                    <SecondaryButton v-if="($page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'super_admin')" class="text-xs text-rose-600" @click="confirmDeleteSite(site)">Delete</SecondaryButton>
                                 </div>
                             </td>
                         </tr>
@@ -300,6 +351,24 @@ const buildSite = async (siteID,index) => {
                 </div>
                 <div class="flex justify-end">
                     <SecondaryButton @click="closeConfirmViewLog">Close</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="deleteConfirmShow" @close="() => { deleteConfirmShow = false }" :maxWidth="maxWidth">
+            <div class="p-6 space-y-4">
+                <h2 class="text-lg font-semibold text-slate-900">Confirm Deletion</h2>
+                <p class="text-sm text-slate-700">You're about to delete site: <strong>{{ deleteTarget?.site_name }}</strong></p>
+                <ul class="text-sm text-slate-600 list-disc ml-5">
+                    <li>Stopping PM2 process: <strong>app-{{ deleteTarget?.site_name }}</strong></li>
+                    <li>Removing Apache config for: <strong>{{ deleteTarget?.site_name }}</strong></li>
+                    <li>Removing folder: <strong>{{ deleteTarget?.path_source_code }}</strong></li>
+                    <li>Removing generated scripts & logs in storage</li>
+                    <li>Deleting database record</li>
+                </ul>
+                <div class="flex justify-end gap-3">
+                    <SecondaryButton @click="() => { deleteConfirmShow = false; deleteTarget = null }">Cancel</SecondaryButton>
+                    <PrimaryButton :disabled="deleting" @click="performDeleteSite" :loading="deleting" loading-text="Deleting...">Delete (irreversible)</PrimaryButton>
                 </div>
             </div>
         </Modal>
@@ -352,4 +421,6 @@ const buildSite = async (siteID,index) => {
         </Modal>
     </section>
 </template>
+
+<LogHistoryModal :siteId="historySiteId" :show="historyModalShow" @close="closeHistory" @openLog="onOpenHistoryLog" />
 

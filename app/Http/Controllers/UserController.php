@@ -16,7 +16,7 @@ class UserController extends Controller
      */
     public function __construct()
     {
-        if (!Gate ::allows('isAdmin')) {
+        if (!auth()->user() || !auth()->user()->isAdmin()) {
             abort(403);
         }
     }
@@ -57,7 +57,7 @@ class UserController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role'     => 'required|in:Admin,Default',
+            'role'     => 'required|in:user,admin,super_admin',
         ]);
 
         User ::create([
@@ -81,10 +81,17 @@ class UserController extends Controller
         $request -> validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user -> id,
-            'role'  => 'required|in:Admin,Default',
+            'role'  => 'required|in:user,admin,super_admin',
         ]);
 
         // Update the user
+        // Only super_admin can change role to admin or super_admin
+        if ($request->input('role') !== $user->role) {
+            if (!auth()->user()->isSuperAdmin()) {
+                return redirect() -> route('users.index') -> with('error', 'Only Super Admin can change roles');
+            }
+        }
+
         $user -> update($request -> only('name', 'email', 'role'));
 
         // Redirect or send a success message
@@ -99,14 +106,12 @@ class UserController extends Controller
         ];
 
         $user = User ::findOrFail($id);
-        if ($user -> role !== 'Admin') {
-            $user -> delete();
-        } else {
-            $data = [
-                'status' => false,
-                'message' => "User $user->name is admin cannot delete"
-            ];
+        // Only super_admin can delete users
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
         }
+
+        $user->delete();
         return response()->json($data);
     }
 }

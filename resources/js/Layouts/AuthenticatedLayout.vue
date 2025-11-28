@@ -10,7 +10,10 @@ const desktopSidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 
 const user = computed(() => page.props.auth?.user ?? { name: 'User', email: '' });
-const isAdmin = computed(() => user.value?.role === 'Admin');
+const isAdmin = computed(() => {
+    const r = (user.value?.role || '').toString().toLowerCase();
+    return r === 'admin' || r === 'super_admin';
+});
 const preferences = computed(() => page.props.preferences || {
     theme_color: 'indigo',
     content_width: 'wide',

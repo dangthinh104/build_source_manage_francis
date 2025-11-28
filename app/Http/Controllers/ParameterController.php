@@ -7,6 +7,13 @@ use Illuminate\Http\Request;
 
 class ParameterController extends Controller
 {
+    public function __construct()
+    {
+        $user = auth()->user();
+        if (!$user || ($user->role ?? '') !== 'super_admin') {
+            abort(403, 'Unauthorized');
+        }
+    }
     public function index()
     {
         $parameters = Parameter::query()
