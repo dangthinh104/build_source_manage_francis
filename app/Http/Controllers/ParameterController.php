@@ -11,9 +11,20 @@ class ParameterController extends Controller
     {
         $parameters = Parameter::query()
             ->orderBy('key')
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'key' => $p->key,
+                    'value' => $p->value,
+                    'type' => $p->type,
+                    'description' => $p->description,
+                ];
+            });
 
-        return response()->json($parameters);
+        return \Inertia\Inertia::render('Parameters/Index', [
+            'parameters' => $parameters,
+        ]);
     }
 
     public function store(Request $request)

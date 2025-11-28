@@ -294,7 +294,10 @@ const buildSite = async (siteID,index) => {
         <Modal :show="confirmingViewLog" @close="closeConfirmViewLog" :maxWidth="maxWidth">
             <div class="p-6 space-y-4">
                 <h2 class="text-lg font-semibold text-slate-900">Latest log · {{ details.path_log }}</h2>
-                <pre class="log-content"><code>{{ details.log_content }}</code></pre>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Log Preview</h4>
+                    <pre class="bg-gray-900 text-green-400 font-mono p-4 rounded-md overflow-x-auto whitespace-pre-wrap text-sm max-h-80">{{ details.log_content }}</pre>
+                </div>
                 <div class="flex justify-end">
                     <SecondaryButton @click="closeConfirmViewLog">Close</SecondaryButton>
                 </div>
@@ -336,8 +339,8 @@ const buildSite = async (siteID,index) => {
                     </div>
 
                     <div>
-                        <h4 class="text-sm font-semibold text-slate-700 mb-2">Shell content</h4>
-                        <pre class="shell-content"><code>{{ detailSite.sh_content }}</code></pre>
+                        <h4 class="text-sm font-semibold text-slate-700 mb-2">Shell Script Preview</h4>
+                        <pre class="bg-gray-900 text-green-400 font-mono p-4 rounded-md overflow-x-auto whitespace-pre-wrap text-sm max-h-80">{{ detailSite.sh_content }}</pre>
                     </div>
 
                     <div class="flex justify-end gap-3">
@@ -350,53 +353,3 @@ const buildSite = async (siteID,index) => {
     </section>
 </template>
 
-<style scoped>
-.shell-content,
-.log-content {
-    font-size: 0.875rem;
-    font-family: "Fira Code", "JetBrains Mono", "Courier New", Courier, monospace;
-    width: 100%;
-    max-height: 32rem;
-    overflow: auto;
-    border-radius: 0.75rem;
-    border: 1px solid #000000;
-    padding: 1.25rem;
-    background-color: #000000;
-    color: #00ff00;
-    line-height: 1.6;
-    tab-size: 4;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.shell-content code,
-.log-content code {
-    font-family: inherit;
-    font-size: inherit;
-    color: inherit;
-}
-
-/* Custom scrollbar for shell/log content */
-.shell-content::-webkit-scrollbar,
-.log-content::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-.shell-content::-webkit-scrollbar-track,
-.log-content::-webkit-scrollbar-track {
-    background: #0a0a0a;
-    border-radius: 0.5rem;
-}
-
-.shell-content::-webkit-scrollbar-thumb,
-.log-content::-webkit-scrollbar-thumb {
-    background: #1a1a1a;
-    border-radius: 0.5rem;
-    border: 2px solid #000000;
-}
-
-.shell-content::-webkit-scrollbar-thumb:hover,
-.log-content::-webkit-scrollbar-thumb:hover {
-    background: #2a2a2a;
-}
-</style>

@@ -29,9 +29,31 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        if (config('app.debug')) {
+            \Log::debug('Auth store - before authenticate', [
+                'session_id' => $request->session()->getId(),
+                'cookies' => $request->headers->get('cookie'),
+            ]);
+        }
+
         $request->authenticate();
 
+        if (config('app.debug')) {
+            \Log::debug('Auth store - after authenticate', [
+                'session_id' => $request->session()->getId(),
+                'cookies' => $request->headers->get('cookie'),
+            ]);
+        }
+
         $request->session()->regenerate();
+        $request->session()->regenerateToken();
+
+        if (config('app.debug')) {
+            \Log::debug('Auth store - after regenerate', [
+                'session_id' => $request->session()->getId(),
+                'cookies' => $request->headers->get('cookie'),
+            ]);
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

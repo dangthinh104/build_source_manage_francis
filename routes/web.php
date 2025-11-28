@@ -57,3 +57,8 @@ Route::middleware('auth')->group(function () {
 Route::get('/build-my-site-out/site/{siteName}', [MySiteController::class, 'buildMySiteOutbound']);
 
 require __DIR__.'/auth.php';
+
+// Fallback route for undefined paths — return a 404 Inertia page
+Route::fallback(function () {
+    return Inertia::render('Errors/NotFound')->toResponse(request())->setStatusCode(404);
+});

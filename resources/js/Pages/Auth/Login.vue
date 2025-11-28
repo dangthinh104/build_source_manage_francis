@@ -24,7 +24,13 @@ const form = useForm({
 
 const submit = () => {
     form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+        onSuccess: () => {
+            // On successful login Inertia will handle redirect; clear password
+            form.reset('password');
+        },
+        onError: () => {
+            // keep password filled for user convenience on error
+        },
     });
 };
 </script>
@@ -85,7 +91,7 @@ const submit = () => {
                     Forgot your password?
                 </Link>
 
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                <PrimaryButton class="ms-4" :loading="form.processing">
                     Log in
                 </PrimaryButton>
             </div>
