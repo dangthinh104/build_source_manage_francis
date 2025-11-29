@@ -74,32 +74,38 @@ class TwoFactorController extends Controller
      */
     public function confirm(Request $request): RedirectResponse
     {
+        // Validate the input
         $request->validate([
-            'code' => ['required', 'string'],
+            'code' => ['required', 'string', 'size:6'],
+        ], [
+            'code.required' => 'Please enter the authentication code.',
+            'code.size' => 'The authentication code must be 6 digits.',
         ]);
 
+        // Get user from session
         $userId = $request->session()->get('auth.2fa.setup_id');
 
         if (!$userId) {
-            return redirect()->route('login');
+            return redirect()->route('login')->withErrors(['code' => 'Session expired. Please login again.']);
         }
 
         $user = User::find($userId);
 
         if (!$user || !$user->two_factor_secret) {
-            return redirect()->route('login');
+            return redirect()->route('login')->withErrors(['code' => 'Invalid session. Please login again.']);
         }
 
+        // Verify the code
         $google2fa = new Google2FA();
         $secret = decrypt($user->two_factor_secret);
 
         $valid = $google2fa->verifyKey($secret, $request->input('code'));
 
         if (!$valid) {
-            return back()->withErrors(['code' => 'The provided code was invalid.']);
+            return back()->withErrors(['code' => 'Invalid authentication code. Please try again.']);
         }
 
-        // Set confirmed timestamp and generate recovery codes
+        // Success - Set confirmed timestamp and generate recovery codes
         $user->two_factor_confirmed_at = now();
         $user->two_factor_recovery_codes = encrypt(json_encode($this->generateRecoveryCodes()));
         $user->save();
@@ -111,7 +117,7 @@ class TwoFactorController extends Controller
         $request->session()->forget('auth.2fa.setup_id');
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard');
+        return redirect()->route('dashboard')->with('status', 'Two-factor authentication has been enabled successfully!');
     }
 
     // Flow 2: Challenge (Login)

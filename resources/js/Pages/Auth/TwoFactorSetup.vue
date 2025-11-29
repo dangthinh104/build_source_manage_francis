@@ -1,6 +1,6 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const props = defineProps({
     qrCode: {
@@ -19,8 +19,16 @@ const form = useForm({
 
 const codeInputs = ref([]);
 
+onMounted(() => {
+    // Autofocus first input on mount
+    if (codeInputs.value[0]) {
+        codeInputs.value[0].focus();
+    }
+});
+
 const submit = () => {
     form.post(route('2fa.confirm'), {
+        preserveScroll: true,
         onError: () => {
             form.reset('code');
             if (codeInputs.value[0]) {
@@ -30,7 +38,7 @@ const submit = () => {
     });
 };
 
-// Auto-focus next input when typing
+// Autofocus next input when typing
 const handleInput = (index, event) => {
     const value = event.target.value;
     if (value.length === 1 && index < 5) {
@@ -57,6 +65,24 @@ const handlePaste = (event) => {
 };
 </script>
 
+<style scoped>
+.qr-code-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 200px;
+    min-height: 200px;
+}
+
+.qr-code-wrapper :deep(svg) {
+    display: block;
+    width: 200px !important;
+    height: 200px !important;
+    max-width: 200px;
+    max-height: 200px;
+}
+</style>
+
 <template>
     <Head title="Set Up Two-Factor Authentication" />
 
@@ -81,19 +107,26 @@ const handlePaste = (event) => {
 
                 <!-- QR Code Section -->
                 <div class="mb-8">
-                    <div class="flex justify-center mb-4">
-                        <div class="p-4 bg-white rounded-xl border-2 border-slate-200 shadow-sm" v-html="qrCode"></div>
+                    <!-- QR Code Container -->
+                    <div class="flex justify-center mb-6">
+                        <div class="p-6 bg-white rounded-2xl border-2 border-slate-200 shadow-sm inline-flex items-center justify-center">
+                            <div class="qr-code-wrapper" v-html="qrCode"></div>
+                        </div>
                     </div>
 
                     <!-- Manual Entry -->
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                        <p class="text-xs font-medium text-slate-700 mb-2 text-center">Or enter this code manually:</p>
+                        <p class="text-xs font-medium text-slate-600 mb-3 text-center uppercase tracking-wide">
+                            Or enter this code manually
+                        </p>
                         <div class="flex items-center justify-center gap-2">
-                            <code class="text-sm font-mono font-semibold text-slate-900 bg-white px-3 py-2 rounded-lg border border-slate-300">{{ secret }}</code>
+                            <code class="text-base font-mono font-bold text-slate-900 bg-white px-4 py-2.5 rounded-lg border-2 border-slate-300 tracking-wider">
+                                {{ secret }}
+                            </code>
                             <button
                                 type="button"
                                 @click="navigator.clipboard.writeText(secret)"
-                                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition"
+                                class="p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-300"
                                 title="Copy to clipboard"
                             >
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
