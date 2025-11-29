@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -30,7 +32,7 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         if (config('app.debug')) {
-            \Log::debug('Auth store - before authenticate', [
+            Log::debug('Auth store - before authenticate', [
                 'session_id' => $request->session()->getId(),
                 'cookies' => $request->headers->get('cookie'),
             ]);
@@ -39,39 +41,41 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         if (config('app.debug')) {
-            \Log::debug('Auth store - after authenticate', [
+            Log::debug('Auth store - after authenticate', [
                 'session_id' => $request->session()->getId(),
                 'cookies' => $request->headers->get('cookie'),
             ]);
         }
 
         // Get the authenticated user
+        /** @var User|null $user */
         $user = Auth::user();
 
-        // Check if 2FA is enabled for this user
-        if ($user && $user->two_factor_enabled && $user->two_factor_secret !== null) {
-            // Check if device is remembered (skip 2FA if verified within 1 day)
-            $rememberedDevice = $request->cookie('device_2fa_remembered_' . $user->id);
-            
-            if (!$rememberedDevice || $rememberedDevice !== hash('sha256', $user->id . $user->email)) {
-                // 2FA is required and device is not remembered
-                // Log out the user temporarily
-                Auth::logout();
-                
-                // Store user ID in session for 2FA verification
-                $request->session()->put('auth.2fa.id', $user->id);
-                $request->session()->put('auth.2fa.remember', $request->boolean('remember'));
-                
-                return redirect()->route('2fa.verify');
+        // If the user has confirmed two-factor authentication, intercept login and send to 2FA challenge
+        if ($user && $user->two_factor_confirmed_at !== null) {
+            // Store user ID (and remember preference) in session for the 2FA challenge
+            $request->session()->put('auth.2fa.id', $user->id);
+            $request->session()->put('auth.2fa.remember', $request->boolean('remember'));
+
+            // Log the user out so the session remains unauthenticated until 2FA completes
+            Auth::guard('web')->logout();
+
+            if (config('app.debug')) {
+                Log::debug('Auth store - 2FA enabled, redirecting to challenge', [
+                    'session_id' => $request->session()->getId(),
+                    'user_id' => $user->id,
+                ]);
             }
+
+            return redirect()->route('2fa.challenge');
         }
 
-        // Either 2FA is not enabled or device is remembered - proceed with normal login
+        // 2FA not enabled for this user -> complete normal login
         $request->session()->regenerate();
         $request->session()->regenerateToken();
 
         if (config('app.debug')) {
-            \Log::debug('Auth store - after regenerate', [
+            Log::debug('Auth store - after regenerate', [
                 'session_id' => $request->session()->getId(),
                 'cookies' => $request->headers->get('cookie'),
             ]);

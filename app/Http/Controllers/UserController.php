@@ -117,7 +117,7 @@ class UserController extends Controller
 
         $user = User ::findOrFail($id);
         $user->delete();
-        
+
         return response()->json([
             'status' => true,
             'message' => 'User deleted successfully'
@@ -173,4 +173,25 @@ class UserController extends Controller
             ]);
         }
     }
+
+    /**
+     * Force reset/disable two-factor authentication for a user (Super Admin only).
+     */
+    public function resetTwoFactor(User $user)
+    : RedirectResponse {
+
+        // Ensure the acting user is Super Admin
+        if (!auth()->user() || !auth()->user()->isSuperAdmin()) {
+            abort(403);
+        }
+
+        // Clear 2FA fields for the target user
+        $user->two_factor_secret = null;
+        $user->two_factor_confirmed_at = null;
+        $user->two_factor_recovery_codes = null;
+        $user->save();
+
+        return redirect()->back()->with('success', 'User 2FA has been disabled');
+    }
+
 }

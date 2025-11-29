@@ -12,6 +12,7 @@ use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\Auth\TwoFactorController;
 
 Route::get('/', function () {
     return Inertia::render('Auth/Login', [
@@ -20,8 +21,9 @@ Route::get('/', function () {
     ]);
 });
 
-
-
+// Public 2FA challenge routes (used after initial credential verification)
+Route::get('/2fa-challenge', [TwoFactorController::class, 'viewChallenge'])->name('2fa.challenge');
+Route::post('/2fa-challenge', [TwoFactorController::class, 'verifyChallenge'])->name('2fa.verify');
 
 Route::middleware('auth')->group(function () {
     Route::post('/my-site-store', [MySiteController::class, 'store'])->name('my_site.store');
@@ -38,6 +40,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
     Route::post('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::post('/users/{id}/toggle-two-factor', [UserController::class, 'toggleTwoFactor'])->name('users.toggle_two_factor');
+    // Admin-only route to force-reset a user's 2FA
+    Route::post('/users/{user}/reset-2fa', [UserController::class, 'resetTwoFactor'])
+        ->name('users.reset_2fa')
+        ->middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/my-sites', [MySiteController::class, 'index'])->name('my_site.index');
 
@@ -53,6 +59,10 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    // Profile 2FA setup/confirm/disable routes
+    Route::post('/profile/2fa/enable', [ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
+    Route::post('/profile/2fa/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
+    Route::delete('/profile/2fa', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/preferences', [UserPreferenceController::class, 'update'])->name('preferences.update');
