@@ -51,13 +51,22 @@ class AuthenticatedSessionController extends Controller
         /** @var User|null $user */
         $user = Auth::user();
 
-        // If the user has confirmed two-factor authentication, intercept login and send to 2FA challenge
-        if ($user && $user->two_factor_confirmed_at !== null) {
-            // Store user ID (and remember preference) in session for the 2FA challenge
-            $request->session()->put('auth.2fa.id', $user->id);
-            $request->session()->put('auth.2fa.remember', $request->boolean('remember'));
+        // Check if 2FA is enabled for this user and whether this device is remembered
+        $shouldInterceptFor2FA = false;
+        if ($user) {
+            $rememberedCookie = $request->cookie('device_2fa_remembered_' . $user->id);
+            $deviceRemembered = $rememberedCookie && $rememberedCookie === hash('sha256', $user->id . $user->email);
 
-            // Log the user out so the session remains unauthenticated until 2FA completes
+            if ($user->hasEnabledTwoFactor() && !$deviceRemembered) {
+                $shouldInterceptFor2FA = true;
+            }
+        }
+
+        if ($shouldInterceptFor2FA) {
+            // Store user ID in session for the 2FA challenge
+            $request->session()->put('auth.2fa.id', $user->id);
+
+            // Ensure the user is not logged in until 2FA completes
             Auth::guard('web')->logout();
 
             if (config('app.debug')) {
@@ -70,7 +79,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('2fa.challenge');
         }
 
-        // 2FA not enabled for this user -> complete normal login
+        // 2FA not enabled for this user or device is remembered -> complete normal login
         $request->session()->regenerate();
         $request->session()->regenerateToken();
 

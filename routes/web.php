@@ -21,10 +21,6 @@ Route::get('/', function () {
     ]);
 });
 
-// Public 2FA challenge routes (used after initial credential verification)
-Route::get('/2fa-challenge', [TwoFactorController::class, 'viewChallenge'])->name('2fa.challenge');
-Route::post('/2fa-challenge', [TwoFactorController::class, 'verifyChallenge'])->name('2fa.verify');
-
 Route::middleware('auth')->group(function () {
     Route::post('/my-site-store', [MySiteController::class, 'store'])->name('my_site.store');
     Route::post('/my-site-log-details', [MySiteController::class, 'getLogLastBuildByID'])->name('my_site.get_content_log');

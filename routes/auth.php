@@ -23,7 +23,13 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    Route::get('2fa/verify', [TwoFactorController::class, 'index'])
+    // 2FA challenge routes accessible while the user is unauthenticated but has passed credentials
+    Route::get('2fa-challenge', [TwoFactorController::class, 'create'])
+                ->name('2fa.challenge');
+
+    Route::post('2fa-challenge', [TwoFactorController::class, 'store']);
+
+    Route::get('2fa/verify', [TwoFactorController::class, 'create'])
                 ->name('2fa.verify');
 
     Route::post('2fa/verify', [TwoFactorController::class, 'store'])

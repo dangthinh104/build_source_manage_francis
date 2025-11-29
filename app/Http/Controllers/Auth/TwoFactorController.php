@@ -16,7 +16,7 @@ class TwoFactorController extends Controller
     /**
      * Display the two-factor authentication challenge view.
      */
-    public function viewChallenge(Request $request): Response|RedirectResponse
+    public function create(Request $request): Response|RedirectResponse
     {
         // Ensure there is a pending 2FA authentication
         if (!$request->session()->has('auth.2fa.id')) {
@@ -31,28 +31,24 @@ class TwoFactorController extends Controller
     /**
      * Verify the two-factor authentication code.
      */
-    public function verifyChallenge(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         // Validate code input
         $request->validate([
-            'code' => ['required', 'string', 'size:6'],
+            'code' => ['required', 'string'],
         ]);
 
         // Retrieve pending user id
         $userId = $request->session()->get('auth.2fa.id');
 
         if (!$userId) {
-            return redirect()->route('login')->withErrors([
-                'code' => 'Your session has expired. Please login again.',
-            ]);
+            return redirect()->route('login');
         }
 
         $user = User::find($userId);
 
         if (!$user || !$user->two_factor_secret) {
-            return redirect()->route('login')->withErrors([
-                'code' => 'Invalid authentication state.',
-            ]);
+            return redirect()->route('login');
         }
 
         $google2fa = new Google2FA();
@@ -61,7 +57,7 @@ class TwoFactorController extends Controller
         $valid = $google2fa->verifyKey($secret, $request->input('code'));
 
         if (!$valid) {
-            return back()->withErrors(['code' => 'Invalid code']);
+            return back()->withErrors(['code' => 'The provided code was invalid.']);
         }
 
         // Valid - complete login
