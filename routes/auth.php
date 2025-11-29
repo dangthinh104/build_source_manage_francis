@@ -23,17 +23,19 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    // 2FA challenge routes accessible while the user is unauthenticated but has passed credentials
-    Route::get('2fa-challenge', [TwoFactorController::class, 'create'])
+    // 2FA Setup routes (first time setup)
+    Route::get('2fa/setup', [TwoFactorController::class, 'setup'])
+                ->name('2fa.setup');
+
+    Route::post('2fa/confirm', [TwoFactorController::class, 'confirm'])
+                ->name('2fa.confirm');
+
+    // 2FA Challenge routes (login flow)
+    Route::get('2fa/challenge', [TwoFactorController::class, 'challenge'])
                 ->name('2fa.challenge');
 
-    Route::post('2fa-challenge', [TwoFactorController::class, 'store']);
-
-    Route::get('2fa/verify', [TwoFactorController::class, 'create'])
+    Route::post('2fa/verify', [TwoFactorController::class, 'verify'])
                 ->name('2fa.verify');
-
-    Route::post('2fa/verify', [TwoFactorController::class, 'store'])
-                ->name('2fa.verify.store');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
                 ->name('password.request');

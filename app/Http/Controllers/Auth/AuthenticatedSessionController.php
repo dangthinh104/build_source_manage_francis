@@ -38,6 +38,7 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Validate credentials (may log the user in depending on implementation)
         $request->authenticate();
 
         if (config('app.debug')) {
@@ -47,30 +48,41 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        // Get the authenticated user
+        // Get the authenticated user (may be logged in briefly by authenticate())
         /** @var User|null $user */
         $user = Auth::user();
 
-        // Check if 2FA is enabled for this user and whether this device is remembered
-        $shouldInterceptFor2FA = false;
-        if ($user) {
-            $rememberedCookie = $request->cookie('device_2fa_remembered_' . $user->id);
-            $deviceRemembered = $rememberedCookie && $rememberedCookie === hash('sha256', $user->id . $user->email);
-
-            if ($user->hasEnabledTwoFactor() && !$deviceRemembered) {
-                $shouldInterceptFor2FA = true;
-            }
+        if (!$user) {
+            // Unexpected: authentication did not produce a user
+            return redirect()->route('login')->withErrors([
+                'email' => 'Authentication failed. Please try again.',
+            ]);
         }
 
-        if ($shouldInterceptFor2FA) {
-            // Store user ID in session for the 2FA challenge
-            $request->session()->put('auth.2fa.id', $user->id);
-
-            // Ensure the user is not logged in until 2FA completes
+        // CASE A: 2FA is enabled but not yet confirmed -> send to setup
+        if ($user->shouldRedirectToTwoFactorSetup()) {
+            // Store user id for setup flow and ensure no authenticated session remains
+            $request->session()->put('auth.2fa.setup_id', $user->id);
             Auth::guard('web')->logout();
 
             if (config('app.debug')) {
-                Log::debug('Auth store - 2FA enabled, redirecting to challenge', [
+                Log::debug('Auth store - redirecting to 2FA setup', [
+                    'session_id' => $request->session()->getId(),
+                    'user_id' => $user->id,
+                ]);
+            }
+
+            return redirect()->route('2fa.setup');
+        }
+
+        // CASE B: 2FA is enabled and confirmed -> send to challenge
+        if ($user->shouldRedirectToTwoFactorChallenge()) {
+            // Store user id for challenge flow and ensure no authenticated session remains
+            $request->session()->put('auth.2fa.id', $user->id);
+            Auth::guard('web')->logout();
+
+            if (config('app.debug')) {
+                Log::debug('Auth store - redirecting to 2FA challenge', [
                     'session_id' => $request->session()->getId(),
                     'user_id' => $user->id,
                 ]);
@@ -79,7 +91,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('2fa.challenge');
         }
 
-        // 2FA not enabled for this user or device is remembered -> complete normal login
+        // CASE C: No 2FA -> complete normal login
         $request->session()->regenerate();
         $request->session()->regenerateToken();
 

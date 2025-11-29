@@ -23,9 +23,11 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'two_factor_enabled',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_confirmed_at',
+        // keep legacy flag if present
         'two_factor_enabled',
     ];
 
@@ -51,6 +53,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
+            'two_factor_enabled' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -76,12 +79,30 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user has enabled two-factor authentication.
+     * Check if the user has enabled two-factor authentication (confirmed).
      *
      * @return bool
      */
     public function hasEnabledTwoFactor(): bool
     {
         return $this->two_factor_confirmed_at !== null;
+    }
+
+    /**
+     * Determine if the user should be redirected to the two-factor setup flow.
+     * Returns true when 2FA is enabled but not yet confirmed.
+     */
+    public function shouldRedirectToTwoFactorSetup(): bool
+    {
+        return (bool) $this->two_factor_enabled && $this->two_factor_confirmed_at === null;
+    }
+
+    /**
+     * Determine if the user should be redirected to the two-factor challenge flow.
+     * Returns true when 2FA is enabled and already confirmed.
+     */
+    public function shouldRedirectToTwoFactorChallenge(): bool
+    {
+        return (bool) $this->two_factor_enabled && $this->two_factor_confirmed_at !== null;
     }
 }
