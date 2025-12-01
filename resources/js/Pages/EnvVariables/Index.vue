@@ -40,12 +40,15 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-2">Variable Value</label>
-                            <input 
-                                v-model="newVariable.variable_value" 
-                                type="text" 
-                                class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
-                                placeholder="e.g., true"
-                                required
+                            <Codemirror
+                                v-model="newVariable.variable_value"
+                                placeholder="e.g., true or JSON format"
+                                :style="{ height: '250px' }"
+                                :autofocus="false"
+                                :indent-with-tab="true"
+                                :tab-size="2"
+                                :extensions="[json()]"
+                                class="border border-slate-300 rounded-xl focus-within:ring-2 focus-within:ring-indigo-400/50 focus-within:border-indigo-400 transition-all duration-200 hover:border-slate-400 overflow-hidden"
                             />
                         </div>
                     </div>
@@ -151,6 +154,8 @@ import axios from 'axios';
 import {Head, usePage} from '@inertiajs/vue3';
 import EditModal from './EditModal.vue';
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { Codemirror } from 'vue-codemirror';
+import { json } from '@codemirror/lang-json';
 
 const props = defineProps({
     envVariables: Array,

@@ -8,6 +8,7 @@ use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPreferenceController;
+use App\Http\Controllers\RbacController;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +52,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
     // Parameters only accessible by super_admin
     Route::resource('parameters', ParameterController::class)->only(['index', 'store', 'update', 'destroy'])->middleware(\App\Http\Middleware\RoleMiddleware::class . ':super_admin');
+    // RBAC Matrix only accessible by super_admin
+    Route::get('/rbac/matrix', [RbacController::class, 'index'])->name('rbac.matrix')->middleware(\App\Http\Middleware\RoleMiddleware::class . ':super_admin');
 
 });
 
