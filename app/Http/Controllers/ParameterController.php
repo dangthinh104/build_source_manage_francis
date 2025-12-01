@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Parameter;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ParameterController extends Controller
@@ -10,7 +11,7 @@ class ParameterController extends Controller
     public function __construct()
     {
         $user = auth()->user();
-        if (!$user || ($user->role ?? '') !== 'super_admin') {
+        if (!$user || $user->role !== User::ROLE_SUPER_ADMIN) {
             abort(403, 'Unauthorized');
         }
     }

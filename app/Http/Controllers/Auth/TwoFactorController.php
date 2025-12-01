@@ -40,28 +40,38 @@ class TwoFactorController extends Controller
         // Initialize Google2FA
         $google2fa = new Google2FA();
 
-        // Generate new secret if missing
-        if (!$user->two_factor_secret) {
-            $secret = $google2fa->generateSecretKey();
-            $user->two_factor_secret = encrypt($secret);
-            $user->save();
-        } else {
-            $secret = decrypt($user->two_factor_secret);
-        }
+        // Always regenerate secret for fresh setup to avoid any corruption issues
+        // This ensures the QR code will always work
+        $secret = $google2fa->generateSecretKey();
+        $user->two_factor_secret = encrypt($secret);
+        $user->two_factor_confirmed_at = null; // Reset confirmation
+        $user->two_factor_recovery_codes = null; // Clear old recovery codes
+        $user->save();
 
-        // Generate QR Code SVG
+        // Generate QR Code SVG with proper formatting
+        $companyName = config('app.name', 'Laravel');
+        $holderName = $user->email;
+        
         $qrCodeUrl = $google2fa->getQRCodeUrl(
-            config('app.name'),
-            $user->email,
+            $companyName,
+            $holderName,
             $secret
         );
 
         $renderer = new ImageRenderer(
-            new RendererStyle(200),
+            new RendererStyle(200, 0), // 200px size, 0 margin
             new SvgImageBackEnd()
         );
         $writer = new Writer($renderer);
         $qrCodeSvg = $writer->writeString($qrCodeUrl);
+        
+        // Ensure SVG has proper dimensions and styling
+        $qrCodeSvg = preg_replace(
+            '/<svg/',
+            '<svg width="200" height="200" style="max-width: 100%; height: auto;"',
+            $qrCodeSvg,
+            1
+        );
 
         return Inertia::render('Auth/TwoFactorSetup', [
             'qrCode' => $qrCodeSvg,
@@ -97,12 +107,33 @@ class TwoFactorController extends Controller
 
         // Verify the code
         $google2fa = new Google2FA();
-        $secret = decrypt($user->two_factor_secret);
+        
+        try {
+            $secret = decrypt($user->two_factor_secret);
+        } catch (\Exception $e) {
+            \Log::error('2FA Setup - Failed to decrypt secret', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return back()->withErrors(['code' => 'Invalid session. Please refresh and try again.']);
+        }
+        
+        // Sanitize input: remove spaces and any non-numeric characters
+        $code = preg_replace('/\s+/', '', $request->input('code'));
+        $code = preg_replace('/\D/', '', $code);
 
-        $valid = $google2fa->verifyKey($secret, $request->input('code'));
+        // Verify with window tolerance of 2 (allows +/- 1 minute time drift)
+        // Increased from 1 to handle clock sync issues better
+        $valid = $google2fa->verifyKey($secret, $code, 2);
 
         if (!$valid) {
-            return back()->withErrors(['code' => 'Invalid authentication code. Please try again.']);
+            \Log::warning('2FA Setup Failed', [
+                'user_id' => $user->id,
+                'code_length' => strlen($code),
+                'secret_length' => strlen($secret),
+                'timestamp' => now()->timestamp,
+            ]);
+            return back()->withErrors(['code' => 'The authentication code is invalid. Please try again or rescan the QR code.']);
         }
 
         // Success - Set confirmed timestamp and generate recovery codes
@@ -161,12 +192,26 @@ class TwoFactorController extends Controller
         }
 
         $google2fa = new Google2FA();
-        $secret = decrypt($user->two_factor_secret);
+        
+        try {
+            $secret = decrypt($user->two_factor_secret);
+        } catch (\Exception $e) {
+            \Log::error('2FA Login - Failed to decrypt secret', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->route('login')->withErrors(['email' => '2FA configuration error. Please contact support.']);
+        }
+        
+        // Sanitize input: remove spaces and any non-numeric characters
+        $code = preg_replace('/\s+/', '', $request->input('code'));
+        $code = preg_replace('/\D/', '', $code);
 
-        $valid = $google2fa->verifyKey($secret, $request->input('code'));
+        // Verify with window tolerance of 2 (allows +/- 1 minute time drift)
+        $valid = $google2fa->verifyKey($secret, $code, 2);
 
         if (!$valid) {
-            return back()->withErrors(['code' => 'The provided code was invalid.']);
+            return back()->withErrors(['code' => 'The authentication code is invalid. Please try again.']);
         }
 
         // Valid - complete login

@@ -11,6 +11,12 @@ const desktopSidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 
 const user = computed(() => page.props.auth?.user ?? { name: 'User', email: '' });
+
+const isSuperAdmin = computed(() => {
+    const r = (user.value?.role || '').toString().toLowerCase();
+    return r === 'super_admin';
+});
+
 const isAdmin = computed(() => {
     const r = (user.value?.role || '').toString().toLowerCase();
     return r === 'admin' || r === 'super_admin';
@@ -159,6 +165,7 @@ const navItems = computed(() => {
             label: 'ENV Variables',
             routeName: 'envVariables.index',
             patterns: ['envVariables.*'],
+            adminOnly: true,
             iconPath: ['M12 2a10 10 0 00-9.95 9.05', 'M12 2v10l4 2', 'M2 12a10 10 0 0010 10'],
         },
         {
@@ -166,7 +173,7 @@ const navItems = computed(() => {
             label: 'Parameters',
             routeName: 'parameters.index',
             patterns: ['parameters.*'],
-            adminOnly: true,
+            superAdminOnly: true,
             iconPath: ['M3 7h18', 'M3 12h18', 'M3 17h18'],
         },
         {
@@ -178,7 +185,15 @@ const navItems = computed(() => {
         },
     ];
 
-    return items.filter((item) => (item.adminOnly ? isAdmin.value : true));
+    return items.filter((item) => {
+        if (item.superAdminOnly) {
+            return isSuperAdmin.value;
+        }
+        if (item.adminOnly) {
+            return isAdmin.value;
+        }
+        return true;
+    });
 });
 
 const isActive = (item) => {

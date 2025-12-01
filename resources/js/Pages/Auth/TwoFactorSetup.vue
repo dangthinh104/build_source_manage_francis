@@ -1,6 +1,7 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { toast } from 'vue3-toastify';
 
 const props = defineProps({
     qrCode: {
@@ -11,6 +12,11 @@ const props = defineProps({
         type: String,
         required: true,
     },
+});
+
+// Format secret with spaces for better readability (groups of 4)
+const formattedSecret = computed(() => {
+    return props.secret.match(/.{1,4}/g)?.join(' ') || props.secret;
 });
 
 const form = useForm({
@@ -25,6 +31,21 @@ onMounted(() => {
         codeInputs.value[0].focus();
     }
 });
+
+const copySecret = async () => {
+    try {
+        await navigator.clipboard.writeText(props.secret);
+        toast.success('Secret key copied to clipboard!', {
+            position: 'top-right',
+            autoClose: 2000,
+        });
+    } catch (err) {
+        toast.error('Failed to copy to clipboard', {
+            position: 'top-right',
+            autoClose: 2000,
+        });
+    }
+};
 
 const submit = () => {
     form.post(route('2fa.confirm'), {
@@ -65,24 +86,6 @@ const handlePaste = (event) => {
 };
 </script>
 
-<style scoped>
-.qr-code-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 200px;
-    min-height: 200px;
-}
-
-.qr-code-wrapper :deep(svg) {
-    display: block;
-    width: 200px !important;
-    height: 200px !important;
-    max-width: 200px;
-    max-height: 200px;
-}
-</style>
-
 <template>
     <Head title="Set Up Two-Factor Authentication" />
 
@@ -109,30 +112,38 @@ const handlePaste = (event) => {
                 <div class="mb-8">
                     <!-- QR Code Container -->
                     <div class="flex justify-center mb-6">
-                        <div class="p-6 bg-white rounded-2xl border-2 border-slate-200 shadow-sm inline-flex items-center justify-center">
-                            <div class="qr-code-wrapper" v-html="qrCode"></div>
+                        <div class="p-6 bg-white rounded-2xl border-2 border-slate-200 shadow-sm">
+                            <div 
+                                class="flex items-center justify-center w-[200px] h-[200px] overflow-hidden"
+                                v-html="qrCode"
+                            ></div>
                         </div>
                     </div>
 
                     <!-- Manual Entry -->
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
                         <p class="text-xs font-medium text-slate-600 mb-3 text-center uppercase tracking-wide">
-                            Or enter this code manually
+                            Or enter this code manually in your app
                         </p>
-                        <div class="flex items-center justify-center gap-2">
-                            <code class="text-base font-mono font-bold text-slate-900 bg-white px-4 py-2.5 rounded-lg border-2 border-slate-300 tracking-wider">
-                                {{ secret }}
-                            </code>
-                            <button
-                                type="button"
-                                @click="navigator.clipboard.writeText(secret)"
-                                class="p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-300"
-                                title="Copy to clipboard"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                            </button>
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="flex items-center gap-2 w-full justify-center">
+                                <code class="text-sm font-mono font-bold text-slate-900 bg-white px-4 py-2.5 rounded-lg border-2 border-slate-300 tracking-wider">
+                                    {{ formattedSecret }}
+                                </code>
+                                <button
+                                    type="button"
+                                    @click="copySecret"
+                                    class="p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-300 flex-shrink-0"
+                                    title="Copy to clipboard"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-500 text-center">
+                                Account: {{ $page.props.auth?.user?.email || 'your-email' }}
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -8,22 +8,34 @@ defineProps({
     },
 });
 
+const useRecoveryCode = ref(false);
+
 const form = useForm({
     code: '',
+    recovery_code: '',
     remember_device: false,
 });
 
 const codeInputs = ref([]);
 
 const submit = () => {
-    form.post(route('2fa.verify.store'), {
+    form.post(route('2fa.verify'), {
         onError: () => {
-            form.reset('code');
-            if (codeInputs.value[0]) {
-                codeInputs.value[0].focus();
+            if (useRecoveryCode.value) {
+                form.reset('recovery_code');
+            } else {
+                form.reset('code');
+                if (codeInputs.value[0]) {
+                    codeInputs.value[0].focus();
+                }
             }
         },
     });
+};
+
+const toggleRecoveryMode = () => {
+    useRecoveryCode.value = !useRecoveryCode.value;
+    form.reset('code', 'recovery_code');
 };
 
 // Auto-focus next input when typing
@@ -72,7 +84,9 @@ const handlePaste = (event) => {
                 <!-- Header -->
                 <div class="text-center mb-8">
                     <h2 class="text-2xl font-bold text-slate-900 mb-2">Two-Factor Authentication</h2>
-                    <p class="text-sm text-slate-600">Enter the 6-digit code from your authenticator app</p>
+                    <p class="text-sm text-slate-600">
+                        {{ useRecoveryCode ? 'Enter one of your recovery codes' : 'Enter the 6-digit code from your authenticator app' }}
+                    </p>
                 </div>
 
                 <!-- Status Message -->
@@ -87,8 +101,8 @@ const handlePaste = (event) => {
 
                 <!-- Form -->
                 <form @submit.prevent="submit" class="space-y-6">
-                    <!-- 6-digit Code Input -->
-                    <div>
+                    <!-- 6-digit Code Input or Recovery Code -->
+                    <div v-if="!useRecoveryCode">
                         <label class="block text-sm font-medium text-slate-700 mb-3 text-center">
                             Authentication Code
                         </label>
@@ -116,6 +130,38 @@ const handlePaste = (event) => {
                         </p>
                     </div>
 
+                    <!-- Recovery Code Input -->
+                    <div v-else>
+                        <label class="block text-sm font-medium text-slate-700 mb-3 text-center">
+                            Recovery Code
+                        </label>
+                        <input
+                            v-model="form.recovery_code"
+                            type="text"
+                            class="w-full px-4 py-3 text-center text-lg font-mono border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                            :class="form.errors.recovery_code ? 'border-red-300 bg-red-50' : 'border-slate-300 bg-white hover:border-slate-400'"
+                            placeholder="XXXX-XXXX-XXXX"
+                            autocomplete="off"
+                        />
+                        <p v-if="form.errors.recovery_code" class="mt-2 text-sm text-red-600 text-center flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ form.errors.recovery_code }}
+                        </p>
+                    </div>
+
+                    <!-- Toggle Recovery Code Link -->
+                    <div class="text-center">
+                        <button
+                            type="button"
+                            @click="toggleRecoveryMode"
+                            class="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition"
+                        >
+                            {{ useRecoveryCode ? 'Use authenticator code instead' : 'Use a recovery code' }}
+                        </button>
+                    </div>
+
                     <!-- Remember Device Checkbox -->
                     <div class="flex items-center justify-center">
                         <label class="flex items-center group cursor-pointer">
@@ -133,7 +179,7 @@ const handlePaste = (event) => {
                     <!-- Submit Button -->
                     <button
                         type="submit"
-                        :disabled="form.processing || form.code.length !== 6"
+                        :disabled="form.processing || (!useRecoveryCode && form.code.length !== 6) || (useRecoveryCode && !form.recovery_code)"
                         class="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-xl text-base font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     >
                         <svg v-if="form.processing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -141,7 +187,7 @@ const handlePaste = (event) => {
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <span v-if="form.processing">Verifying...</span>
-                        <span v-else>Verify Code</span>
+                        <span v-else>{{ useRecoveryCode ? 'Verify Recovery Code' : 'Verify Code' }}</span>
                     </button>
                 </form>
 

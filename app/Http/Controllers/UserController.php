@@ -16,7 +16,7 @@ class UserController extends Controller
      */
     public function __construct()
     {
-        if (!auth()->user() || !auth()->user()->isAdmin()) {
+        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
             abort(403);
         }
     }
@@ -60,7 +60,7 @@ class UserController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role'     => 'required|in:user,admin,super_admin',
+            'role'     => 'required|in:' . User::ROLE_USER . ',' . User::ROLE_ADMIN . ',' . User::ROLE_SUPER_ADMIN,
         ]);
 
         // Generate 2FA secret by default for new users
@@ -72,7 +72,6 @@ class UserController extends Controller
             'password' => bcrypt($validated['password']),
             'role'     => $validated['role'],
             'two_factor_secret' => encrypt($secret),
-            'two_factor_enabled' => true,
         ]);
 
         return redirect() -> route('users.index') -> with('success', 'User added successfully! 2FA is enabled by default.');
@@ -89,7 +88,7 @@ class UserController extends Controller
         $request -> validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user -> id,
-            'role'  => 'required|in:user,admin,super_admin',
+            'role'  => 'required|in:' . User::ROLE_USER . ',' . User::ROLE_ADMIN . ',' . User::ROLE_SUPER_ADMIN,
         ]);
 
         // Update the user
@@ -153,7 +152,6 @@ class UserController extends Controller
             // User will need to scan QR code on next login
             $secret = bin2hex(random_bytes(32)); // Generate a 64-character hex secret
             $user->two_factor_secret = encrypt($secret);
-            $user->two_factor_enabled = true;
             $user->save();
 
             return response()->json([
@@ -164,7 +162,7 @@ class UserController extends Controller
             // Disable 2FA
             $user->two_factor_secret = null;
             $user->two_factor_recovery_codes = null;
-            $user->two_factor_enabled = false;
+            $user->two_factor_confirmed_at = null;
             $user->save();
 
             return response()->json([

@@ -14,6 +14,13 @@ class User extends Authenticatable
     use HasFactory, Notifiable, SoftDeletes;
 
     /**
+     * Role constants
+     */
+    public const ROLE_SUPER_ADMIN = 'super_admin';
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_USER = 'user';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -23,12 +30,9 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'two_factor_enabled',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_confirmed_at',
-        // keep legacy flag if present
-        'two_factor_enabled',
     ];
 
     /**
@@ -53,7 +57,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
-            'two_factor_enabled' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -68,14 +71,38 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\BuildHistory::class, 'user_id');
     }
 
-    public function isAdmin(): bool
-    {
-        return strtolower($this->role ?? '') === 'admin' || strtolower($this->role ?? '') === 'super_admin';
-    }
-
+    /**
+     * Check if user is a super admin (full god mode access).
+     */
     public function isSuperAdmin(): bool
     {
-        return strtolower($this->role ?? '') === 'super_admin';
+        return strtolower($this->role ?? '') === self::ROLE_SUPER_ADMIN;
+    }
+
+    /**
+     * Check if user is an admin (can build sites and manage env variables).
+     * Note: Super admin is NOT included as admin for strict RBAC.
+     */
+    public function isAdmin(): bool
+    {
+        return strtolower($this->role ?? '') === self::ROLE_ADMIN;
+    }
+
+    /**
+     * Check if user is a regular user (view-only access).
+     */
+    public function isUser(): bool
+    {
+        return strtolower($this->role ?? '') === self::ROLE_USER;
+    }
+
+    /**
+     * Check if user has admin privileges (admin OR super_admin).
+     * Use this when checking if user can perform admin-level actions.
+     */
+    public function hasAdminPrivileges(): bool
+    {
+        return $this->isAdmin() || $this->isSuperAdmin();
     }
 
     /**
@@ -90,11 +117,11 @@ class User extends Authenticatable
 
     /**
      * Determine if the user should be redirected to the two-factor setup flow.
-     * Returns true when 2FA is enabled but not yet confirmed.
+     * Returns true when 2FA secret exists but not yet confirmed.
      */
     public function shouldRedirectToTwoFactorSetup(): bool
     {
-        return (bool) $this->two_factor_enabled && $this->two_factor_confirmed_at === null;
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at === null;
     }
 
     /**
@@ -103,6 +130,6 @@ class User extends Authenticatable
      */
     public function shouldRedirectToTwoFactorChallenge(): bool
     {
-        return (bool) $this->two_factor_enabled && $this->two_factor_confirmed_at !== null;
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 }

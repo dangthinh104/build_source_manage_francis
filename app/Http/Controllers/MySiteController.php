@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\SiteBuildService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -27,9 +28,14 @@ class MySiteController extends Controller
 
     public function store(Request $request)
     {
+        // Only super_admin can create new sites
+        if (!auth()->user() || !auth()->user()->isSuperAdmin()) {
+            abort(403, 'Only Super Admin can create new sites.');
+        }
+
         $request->validate([
             'site_name' => 'required|string|max:255',
-            'folder_source_path' => ['required', 'string', 'max:500', 'regex:/^\/[a-zA-Z0-9\/_-]+$/', 'not_regex:/\.\.\//'],
+            'folder_source_path' => ['required', 'string', 'max:500', 'regex:/^\/[a-zA-Z0-9\/_-]+$/', 'not_regex:/\\.\\.\\/|\\\\./'],
             'include_pm2' => 'boolean',
             'port_pm2' => 'nullable|string|max:10',
         ]);
@@ -42,9 +48,9 @@ class MySiteController extends Controller
                 $request->input('port_pm2')
             );
 
-            return redirect()->route('dashboard')->with('success', 'Site created successfully!');
+            return redirect()->route('my-sites.index')->with('success', 'Site created successfully!');
         } catch (\Exception $e) {
-            return redirect()->route('dashboard')->with('error', 'Failed to create site: ' . $e->getMessage());
+            return redirect()->route('my-sites.index')->with('error', 'Failed to create site: ' . $e->getMessage());
         }
     }
 
@@ -62,14 +68,22 @@ class MySiteController extends Controller
                 'api_endpoint_url' => $request->input('api_endpoint_url'),
             ]);
 
-            return redirect()->route('dashboard')->with('success', 'Site updated successfully!');
+            return redirect()->route('my-sites.index')->with('success', 'Site updated successfully!');
         } catch (\Exception $e) {
-            return redirect()->route('dashboard')->with('error', 'Failed to update site: ' . $e->getMessage());
+            return redirect()->route('my-sites.index')->with('error', 'Failed to update site: ' . $e->getMessage());
         }
     }
 
     public function buildMySite(Request $request)
     {
+        // Only admin and super_admin can build sites
+        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
+            return response()->json([
+                'status' => 0,
+                'message' => 'Forbidden. Only Admin or Super Admin can build sites.'
+            ], 403);
+        }
+
         try {
             if (!$request->has('site_id')) {
                 throw new \Exception('Site ID is required.');

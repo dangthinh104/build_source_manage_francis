@@ -1,20 +1,36 @@
 <script setup xmlns="http://www.w3.org/1999/html">
-import {useForm} from '@inertiajs/vue3';
+import {useForm, usePage} from '@inertiajs/vue3';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from "@/Components/PrimaryButton.vue";
-import { ref, watch} from 'vue';
+import { ref, watch, computed} from 'vue';
 import Modal from "@/Components/Modal.vue";
 import axios from "axios";
 import Checkbox from "@/Components/Checkbox.vue";
 import LogHistoryModal from '@/Pages/Utils/LogHistoryModal.vue';
 import { toast } from 'vue3-toastify'
+
+const page = usePage();
+
 // defineProps
 defineProps({
     mySite: {
         type: Array,
     }
 });
+
+// Check if current user is super admin
+const isSuperAdmin = computed(() => {
+    const role = page.props.auth?.user?.role;
+    return role === 'super_admin';
+});
+
+// Check if user has admin privileges (admin or super_admin)
+const hasAdminPrivileges = computed(() => {
+    const role = page.props.auth?.user?.role;
+    return role === 'admin' || role === 'super_admin';
+});
+
 const form = useForm({
     site_id: null,
     site_name: null,
@@ -205,7 +221,8 @@ const performDeleteSite = async () => {
             <p class="text-sm text-slate-600">Register new sites, monitor PM2 ports, and trigger builds with live feedback.</p>
         </header>
 
-        <form @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
+        <!-- Only show Add Site form for super_admin -->
+        <form v-if="isSuperAdmin" @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="site_name" class="block text-sm font-medium text-slate-700">Site name</label>
@@ -325,6 +342,7 @@ const performDeleteSite = async () => {
                                     <SecondaryButton class="text-xs" @click="openSiteDetailDialog(site.id, index)">Details</SecondaryButton>
                                     <SecondaryButton class="text-xs" @click="openHistory(site.id)">History</SecondaryButton>
                                     <PrimaryButton
+                                        v-if="hasAdminPrivileges"
                                         class="text-xs"
                                         type="button"
                                         :loading="loadingIndices.includes(index)"
@@ -333,7 +351,7 @@ const performDeleteSite = async () => {
                                     >
                                         Build
                                     </PrimaryButton>
-                                    <SecondaryButton v-if="($page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'super_admin')" class="text-xs text-rose-600" @click="confirmDeleteSite(site)">Delete</SecondaryButton>
+                                    <SecondaryButton v-if="isSuperAdmin" class="text-xs text-rose-600" @click="confirmDeleteSite(site)">Delete</SecondaryButton>
                                 </div>
                             </td>
                         </tr>

@@ -2,11 +2,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\EnvVariable;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class EnvVariableController extends Controller
 {
+    public function __construct()
+    {
+        // Only admin and super_admin can manage environment variables
+        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Forbidden. Only Admin or Super Admin can manage environment variables.');
+        }
+    }
+
     public function index()
     {
 
