@@ -1,5 +1,6 @@
 <script setup xmlns="http://www.w3.org/1999/html">
 import {useForm, usePage} from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from "@/Components/PrimaryButton.vue";
@@ -30,6 +31,9 @@ const hasAdminPrivileges = computed(() => {
     const role = page.props.auth?.user?.role;
     return role === 'admin' || role === 'super_admin';
 });
+
+// Check permissions from Inertia shared data
+const can = computed(() => page.props.auth?.can || {});
 
 const form = useForm({
     site_id: null,
@@ -252,8 +256,8 @@ const performDeleteSite = async () => {
             <p class="text-sm text-slate-600">Register new sites, monitor PM2 ports, and trigger builds with live feedback.</p>
         </header>
 
-        <!-- Only show Add Site form for super_admin -->
-        <form v-if="isSuperAdmin" @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
+        <!-- Only show Add Site form for users with manage_mysites permission -->
+        <form v-if="can.manage_mysites || isSuperAdmin" @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="site_name" class="block text-sm font-medium text-slate-700">Site name</label>
@@ -337,7 +341,7 @@ const performDeleteSite = async () => {
                             class="transition hover:bg-primary-50"
                         >
                             <td class="px-6 py-4 font-semibold text-slate-800">
-                                <button @click="openHistory(site.id)" class="text-primary hover:underline">#{{ site.id }}</button>
+                                <Link :href="route('my_site.show', site.id)" class="text-primary hover:underline">#{{ site.id }}</Link>
                             </td>
                             <td class="px-6 py-4">
                                 <a :href="`https://${site.site_name}`" target="_blank" class="font-medium text-primary hover:underline">
@@ -373,10 +377,9 @@ const performDeleteSite = async () => {
                             <td class="px-6 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <SecondaryButton class="text-xs" @click="openSiteDetailDialog(site.id, index)">Details</SecondaryButton>
-                                    <SecondaryButton class="text-xs" @click="openHistory(site.id)">History</SecondaryButton>
-                                    <SecondaryButton v-if="isSuperAdmin" class="text-xs" @click="openEditModal(site.id)">Edit</SecondaryButton>
+                                    <SecondaryButton v-if="can.manage_mysites || isSuperAdmin" class="text-xs" @click="openEditModal(site.id)">Edit</SecondaryButton>
                                     <PrimaryButton
-                                        v-if="hasAdminPrivileges"
+                                        v-if="can.build_mysites || hasAdminPrivileges"
                                         class="text-xs"
                                         type="button"
                                         :loading="loadingIndices.includes(index)"
@@ -385,7 +388,7 @@ const performDeleteSite = async () => {
                                     >
                                         Build
                                     </PrimaryButton>
-                                    <SecondaryButton v-if="isSuperAdmin" class="text-xs text-rose-600" @click="confirmDeleteSite(site)">Delete</SecondaryButton>
+                                    <SecondaryButton v-if="can.manage_mysites || isSuperAdmin" class="text-xs text-rose-600" @click="confirmDeleteSite(site)">Delete</SecondaryButton>
                                 </div>
                             </td>
                         </tr>

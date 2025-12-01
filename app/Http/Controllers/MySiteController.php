@@ -26,6 +26,20 @@ class MySiteController extends Controller
         ]);
     }
 
+    public function show($id)
+    {
+        $site = \App\Models\MySite::findOrFail($id);
+        $buildHistories = \App\Models\BuildHistory::where('site_id', $id)
+            ->with('user')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return inertia('MySites/Show', [
+            'site' => $site,
+            'buildHistories' => $buildHistories,
+        ]);
+    }
+
     public function store(Request $request)
     {
         // Only super_admin can create new sites

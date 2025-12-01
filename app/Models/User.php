@@ -132,4 +132,20 @@ class User extends Authenticatable
     {
         return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
+
+    /**
+     * Check if user has a specific permission based on role_permissions table.
+     */
+    public function hasPermission(string $permission): bool
+    {
+        return RolePermission::hasPermission($this->role, $permission);
+    }
+
+    /**
+     * Get all permissions for the current user.
+     */
+    public function getPermissions(): array
+    {
+        return RolePermission::getPermissionsForRole($this->role);
+    }
 }

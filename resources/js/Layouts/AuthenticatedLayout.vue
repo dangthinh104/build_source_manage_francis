@@ -12,6 +12,8 @@ const mobileSidebarOpen = ref(false);
 
 const user = computed(() => page.props.auth?.user ?? { name: 'User', email: '' });
 
+const can = computed(() => page.props.auth?.can || {});
+
 const isSuperAdmin = computed(() => {
     const r = (user.value?.role || '').toString().toLowerCase();
     return r === 'super_admin';
@@ -143,6 +145,7 @@ const navItems = computed(() => {
             label: 'Log PM2',
             routeName: 'logs.index',
             patterns: ['logs.*'],
+            permission: 'view_logs',
             iconPath: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
         },
         {
@@ -150,6 +153,7 @@ const navItems = computed(() => {
             label: 'My Sites',
             routeName: 'my_site.index',
             patterns: ['my-site*', 'my_sites*', 'my-sites*', 'my_site.*', 'my_sites.*', 'my-sites.*'],
+            permission: 'view_mysites',
             iconPath: ['M3 7h16', 'M3 12h10', 'M3 17h6'],
         },
         {
@@ -157,7 +161,7 @@ const navItems = computed(() => {
             label: 'Users',
             routeName: 'users.index',
             patterns: ['users.*'],
-            adminOnly: true,
+            permission: 'view_users',
             iconPath: ['M17 20h5v-2a4 4 0 00-4-4h-1', 'M7 20H2v-2a4 4 0 014-4h1', 'M12 12a4 4 0 100-8 4 4 0 000 8z'],
         },
         {
@@ -165,7 +169,7 @@ const navItems = computed(() => {
             label: 'ENV Variables',
             routeName: 'envVariables.index',
             patterns: ['envVariables.*'],
-            adminOnly: true,
+            permission: 'view_env_variables',
             iconPath: ['M12 2a10 10 0 00-9.95 9.05', 'M12 2v10l4 2', 'M2 12a10 10 0 0010 10'],
         },
         {
@@ -173,7 +177,7 @@ const navItems = computed(() => {
             label: 'Parameters',
             routeName: 'parameters.index',
             patterns: ['parameters.*'],
-            superAdminOnly: true,
+            permission: 'view_parameters',
             iconPath: ['M3 7h18', 'M3 12h18', 'M3 17h18'],
         },
         {
@@ -186,6 +190,17 @@ const navItems = computed(() => {
     ];
 
     return items.filter((item) => {
+        // Settings is always visible to authenticated users
+        if (item.key === 'settings') {
+            return true;
+        }
+
+        // Check permission-based visibility
+        if (item.permission) {
+            return can.value[item.permission] === true;
+        }
+
+        // Legacy fallback for backward compatibility
         if (item.superAdminOnly) {
             return isSuperAdmin.value;
         }

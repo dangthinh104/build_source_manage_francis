@@ -41,11 +41,18 @@ class UserController extends Controller
 
     public function edit($id)
     {
+        $targetUser = User::findOrFail($id);
+        $currentUser = auth()->user();
 
-        $user = User ::findOrFail($id);
+        // Rank-based constraints: Admin cannot edit Admin or Super Admin
+        if ($currentUser->isAdmin() && !$currentUser->isSuperAdmin()) {
+            if ($targetUser->hasAdminPrivileges()) {
+                abort(403, 'You cannot edit an Admin or Super Admin user.');
+            }
+        }
 
-        return Inertia ::render('Users/Edit', [
-            'user' => $user,
+        return Inertia::render('Users/Edit', [
+            'user' => $targetUser,
         ]);
     }
 
@@ -82,40 +89,53 @@ class UserController extends Controller
     public function update(Request $request, $id)
     : RedirectResponse {
 
-        $user = User ::findOrFail($id);
+        $targetUser = User::findOrFail($id);
+        $currentUser = auth()->user();
 
         // Validate incoming data
-        $request -> validate([
+        $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user -> id,
+            'email' => 'required|string|email|max:255|unique:users,email,' . $targetUser->id,
             'role'  => 'required|in:' . User::ROLE_USER . ',' . User::ROLE_ADMIN . ',' . User::ROLE_SUPER_ADMIN,
         ]);
 
-        // Update the user
-        // Only super_admin can change role to admin or super_admin
-        if ($request->input('role') !== $user->role) {
-            if (!auth()->user()->isSuperAdmin()) {
-                return redirect() -> route('users.index') -> with('error', 'Only Super Admin can change roles');
+        // Rank-based constraints
+        if ($currentUser->isAdmin() && !$currentUser->isSuperAdmin()) {
+            // Admin users have restrictions
+            
+            // Check 1: Cannot edit Admin or Super Admin users
+            if ($targetUser->hasAdminPrivileges()) {
+                return redirect()->route('users.index')->with('error', 'You cannot edit an Admin or Super Admin user.');
+            }
+
+            // Check 2: Cannot promote users to Admin or Super Admin
+            if (in_array($request->input('role'), [User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])) {
+                return redirect()->route('users.index')->with('error', 'You cannot promote a user to Admin level.');
             }
         }
 
-        $user -> update($request -> only('name', 'email', 'role'));
+        // Super Admin: No restrictions
+        $targetUser->update($request->only('name', 'email', 'role'));
 
-        // Redirect or send a success message
-        return redirect() -> route('users.index') -> with('success', 'User updated successfully');
+        return redirect()->route('users.index')->with('success', 'User updated successfully');
     }
 
     public function destroy($id) {
-        // Strictly ensure ONLY super admin can delete users
-        if (!auth()->user()->isSuperAdmin()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Forbidden. Only Super Admin can delete users.'
-            ], 403);
+        $targetUser = User::findOrFail($id);
+        $currentUser = auth()->user();
+
+        // Rank-based constraints for deletion
+        if ($currentUser->isAdmin() && !$currentUser->isSuperAdmin()) {
+            // Admin users can only delete regular users
+            if ($targetUser->hasAdminPrivileges()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You cannot delete an Admin or Super Admin user.'
+                ], 403);
+            }
         }
 
-        $user = User ::findOrFail($id);
-        $user->delete();
+        $targetUser->delete();
 
         return response()->json([
             'status' => true,

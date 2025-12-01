@@ -30,6 +30,27 @@ const isSuperAdmin = computed(() => {
     return role === 'super_admin';
 });
 
+// Check if current user is admin (but not super admin)
+const isAdmin = computed(() => {
+    const role = page.props.auth?.user?.role;
+    return role === 'admin';
+});
+
+// Check if user can be edited/deleted by current user
+const canManageUser = (targetUser) => {
+    // Super admin can manage everyone
+    if (isSuperAdmin.value) {
+        return true;
+    }
+
+    // Admin can only manage regular users, not other admins or super admins
+    if (isAdmin.value) {
+        return targetUser.role === 'user';
+    }
+
+    return false;
+};
+
 // Helper function to check if user has 2FA enabled
 const has2FAEnabled = (user) => {
     return user.two_factor_confirmed_at !== null && user.two_factor_confirmed_at !== undefined;
@@ -261,6 +282,7 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
                                         <Link
+                                            v-if="canManageUser(user)"
                                             :href="route('users.edit', user.id)"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary rounded-lg font-medium hover:bg-primary-50 transition-all duration-200"
                                         >
@@ -269,8 +291,18 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                             </svg>
                                             <span>Edit</span>
                                         </Link>
+                                        <span
+                                            v-else
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg font-medium cursor-not-allowed"
+                                            title="You cannot edit this user"
+                                        >
+                                            <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span>Edit</span>
+                                        </span>
                                         <button
-                                            v-if="isSuperAdmin"
+                                            v-if="canManageUser(user)"
                                             @click="confirmDelete(user.id, user.name)"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-all duration-200"
                                         >

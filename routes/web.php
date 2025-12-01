@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
         ->middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/my-sites', [MySiteController::class, 'index'])->name('my_site.index');
+    Route::get('/my-sites/{id}', [MySiteController::class, 'show'])->name('my_site.show');
 
     Route::get('/envVariables', [EnvVariableController::class, 'index'])->name('envVariables.index');
     Route::post('/envVariables', [EnvVariableController::class, 'store'])->name('envVariables.store');

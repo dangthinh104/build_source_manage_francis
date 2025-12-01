@@ -1,11 +1,12 @@
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { defineProps } from 'vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { defineProps, computed } from 'vue';
 import InputError from "@/Components/InputError.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 
+const page = usePage();
 const props = defineProps({
     user: Object, // This comes from the controller
 });
@@ -15,6 +16,28 @@ const form = useForm({
     email: props.user.email,
     role: props.user.role,
 });
+
+const currentUserRole = computed(() => page.props.auth?.user?.role);
+const isSuperAdmin = computed(() => currentUserRole.value === 'super_admin');
+const isAdmin = computed(() => currentUserRole.value === 'admin');
+
+// Available roles based on current user's permissions
+const availableRoles = computed(() => {
+    if (isSuperAdmin.value) {
+        return [
+            { value: 'user', label: 'Default User' },
+            { value: 'admin', label: 'Administrator' },
+            { value: 'super_admin', label: 'Super Administrator' }
+        ];
+    } else if (isAdmin.value) {
+        // Admin can only assign 'user' role
+        return [
+            { value: 'user', label: 'Default User' }
+        ];
+    }
+    return [];
+});
+
 const submit = () => {
     form.errors.name = '';
     form.errors.email = '';
@@ -79,10 +102,14 @@ const submit = () => {
                             v-model="form.role" 
                             class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400"
                         >
-                            <option value="Default">Default User</option>
-                            <option value="Admin">Administrator</option>
+                            <option v-for="role in availableRoles" :key="role.value" :value="role.value">
+                                {{ role.label }}
+                            </option>
                         </select>
                         <InputError :message="form.errors.role" />
+                        <p v-if="isAdmin && !isSuperAdmin" class="mt-2 text-xs text-amber-600">
+                            Note: You can only assign users to the "Default User" role.
+                        </p>
                     </div>
 
                     <div class="flex items-center gap-3 pt-4">

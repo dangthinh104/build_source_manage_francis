@@ -1,0 +1,22 @@
+{
+  "user": [
+    "view_dashboard",
+    "view_profile",
+    "edit_profile"
+  ],
+  "admin": [
+    "view_dashboard",
+    "view_profile",
+    "edit_profile",
+    "view_mysites",
+    "build_mysites",
+    "view_env_variables",
+    "manage_env_variables",
+    "view_logs",
+    "view_users",
+    "manage_users"
+  ],
+  "super_admin": [
+    "*"
+  ]
+}
