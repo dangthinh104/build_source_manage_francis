@@ -70,11 +70,19 @@ const detailSite = {
     'api_endpoint_url'          : '',
     'id'          : '',
 }
+const editSite = {
+    'site_name'          : '',
+    'port_pm2'          : '',
+    'api_endpoint_url'          : '',
+    'id'          : '',
+}
 const historyModalShow = ref(false);
 const historySiteId = ref(null);
 const deleteConfirmShow = ref(false);
 const deleteTarget = ref(null);
 const deleting = ref(false);
+const editModalShow = ref(false);
+const updating = ref(false);
 // Function onHandle
 const onOpenLogDetails = async (siteID) => {
     try {
@@ -128,15 +136,6 @@ const addNewSite = () => {
     });
 };
 
-const updateMySetting = async () => {
-    try {
-        const response = await axios.post(route('my_site.update'), detailSite);
-    } catch (error) {
-        console.error("Error fetching suggestions:", error);
-    } finally {
-        detailViewConfirm.value = false;
-    }
-}
 const checkDomain = (domain) => {
     // Regular expression to match domain patterns like abc.com or subdomain.abc.com
     const domainPattern = /^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,6}$/;
@@ -174,6 +173,38 @@ const openHistory = (siteID) => {
 const closeHistory = () => {
     historySiteId.value = null;
     historyModalShow.value = false;
+};
+
+const openEditModal = async (siteID) => {
+    try {
+        const response = await axios.post(route('my_site.open_popup_detail'), {'site_id': siteID});
+        editSite.site_name = response.data.site_name;
+        editSite.port_pm2 = response.data.port_pm2;
+        editSite.api_endpoint_url = response.data.api_endpoint_url;
+        editSite.id = response.data.id;
+    } catch (error) {
+        toast('Failed to load site data', { type: 'error' });
+    } finally {
+        editModalShow.value = true;
+    }
+};
+
+const closeEditModal = () => {
+    editModalShow.value = false;
+};
+
+const updateSite = async () => {
+    try {
+        updating.value = true;
+        const response = await axios.post(route('my_site.update'), editSite);
+        toast('Site updated successfully', { type: 'success' });
+        setTimeout(() => location.reload(), 800);
+    } catch (error) {
+        toast('Failed to update site', { type: 'error' });
+    } finally {
+        updating.value = false;
+        editModalShow.value = false;
+    }
 };
 
 const onOpenHistoryLog = (logData) => {
@@ -305,7 +336,9 @@ const performDeleteSite = async () => {
                             :class="index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'"
                             class="transition hover:bg-primary-50"
                         >
-                            <td class="px-6 py-4 font-semibold text-slate-800">#{{ site.id }}</td>
+                            <td class="px-6 py-4 font-semibold text-slate-800">
+                                <button @click="openHistory(site.id)" class="text-primary hover:underline">#{{ site.id }}</button>
+                            </td>
                             <td class="px-6 py-4">
                                 <a :href="`https://${site.site_name}`" target="_blank" class="font-medium text-primary hover:underline">
                                     {{ site.site_name }}
@@ -341,6 +374,7 @@ const performDeleteSite = async () => {
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <SecondaryButton class="text-xs" @click="openSiteDetailDialog(site.id, index)">Details</SecondaryButton>
                                     <SecondaryButton class="text-xs" @click="openHistory(site.id)">History</SecondaryButton>
+                                    <SecondaryButton v-if="isSuperAdmin" class="text-xs" @click="openEditModal(site.id)">Edit</SecondaryButton>
                                     <PrimaryButton
                                         v-if="hasAdminPrivileges"
                                         class="text-xs"
@@ -392,47 +426,71 @@ const performDeleteSite = async () => {
         </Modal>
 
         <Modal :show="detailViewConfirm" @close="closeDetailSiteModal" :maxWidth="maxWidth">
-            <form @submit.prevent="updateMySetting">
-                <div class="p-6 space-y-4">
-                    <h2 class="text-lg font-semibold text-slate-900">Details · {{ detailSite.site_name }}</h2>
-                    <div class="grid gap-3 md:grid-cols-2 text-sm text-slate-600">
-                        <p><span class="font-semibold text-slate-800">Last path log:</span> {{ detailSite.last_path_log }}</p>
-                        <p><span class="font-semibold text-slate-800">SH directory:</span> {{ detailSite.sh_content_dir }}</p>
-                        <p><span class="font-semibold text-slate-800">Last user build:</span> {{ detailSite.last_user_build }}</p>
-                        <p><span class="font-semibold text-slate-800">Last build:</span> {{ detailSite.last_build }}</p>
-                        <p><span class="font-semibold text-slate-800">Success:</span> {{ detailSite.last_build_success }}</p>
-                        <p><span class="font-semibold text-slate-800">Fail:</span> {{ detailSite.last_build_fail }}</p>
-                        <p><span class="font-semibold text-slate-800">Created:</span> {{ detailSite.created_at }}</p>
-                        <p><span class="font-semibold text-slate-800">Source:</span> {{ detailSite.path_source_code }}</p>
-                    </div>
+            <div class="p-6 space-y-4">
+                <h2 class="text-lg font-semibold text-slate-900">Details · {{ detailSite.site_name }}</h2>
+                <div class="grid gap-3 md:grid-cols-2 text-sm text-slate-600">
+                    <p><span class="font-semibold text-slate-800">Last path log:</span> {{ detailSite.last_path_log }}</p>
+                    <p><span class="font-semibold text-slate-800">SH directory:</span> {{ detailSite.sh_content_dir }}</p>
+                    <p><span class="font-semibold text-slate-800">Last user build:</span> {{ detailSite.last_user_build }}</p>
+                    <p><span class="font-semibold text-slate-800">Last build:</span> {{ detailSite.last_build }}</p>
+                    <p><span class="font-semibold text-slate-800">Success:</span> {{ detailSite.last_build_success }}</p>
+                    <p><span class="font-semibold text-slate-800">Fail:</span> {{ detailSite.last_build_fail }}</p>
+                    <p><span class="font-semibold text-slate-800">Created:</span> {{ detailSite.created_at }}</p>
+                    <p><span class="font-semibold text-slate-800">Source:</span> {{ detailSite.path_source_code }}</p>
+                    <p><span class="font-semibold text-slate-800">PM2 port:</span> {{ detailSite.port_pm2 || '—' }}</p>
+                    <p><span class="font-semibold text-slate-800">API endpoint:</span> {{ detailSite.api_endpoint_url || '—' }}</p>
+                </div>
 
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="text-sm font-medium text-slate-700">PM2 port</label>
-                            <input
-                                v-model="detailSite.port_pm2"
-                                type="text"
-                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-slate-700">API endpoint URL</label>
-                            <input
-                                v-model="detailSite.api_endpoint_url"
-                                type="text"
-                                class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
-                            />
-                        </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Shell Script Preview</h4>
+                    <pre class="bg-gray-900 text-green-400 font-mono p-4 rounded-md overflow-x-auto whitespace-pre-wrap text-sm max-h-80">{{ detailSite.sh_content }}</pre>
+                </div>
+
+                <div class="flex justify-end">
+                    <SecondaryButton @click="closeDetailSiteModal">Close</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="editModalShow" @close="closeEditModal" :maxWidth="maxWidth">
+            <form @submit.prevent="updateSite">
+                <div class="p-6 space-y-4">
+                    <h2 class="text-lg font-semibold text-slate-900">Edit Site · {{ editSite.site_name }}</h2>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Site Name</label>
+                        <input
+                            v-model="editSite.site_name"
+                            type="text"
+                            class="block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
+                            placeholder="example.com"
+                            required
+                        />
                     </div>
 
                     <div>
-                        <h4 class="text-sm font-semibold text-slate-700 mb-2">Shell Script Preview</h4>
-                        <pre class="bg-gray-900 text-green-400 font-mono p-4 rounded-md overflow-x-auto whitespace-pre-wrap text-sm max-h-80">{{ detailSite.sh_content }}</pre>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">PM2 Port</label>
+                        <input
+                            v-model="editSite.port_pm2"
+                            type="text"
+                            class="block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
+                            placeholder="3001"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">API Endpoint URL</label>
+                        <input
+                            v-model="editSite.api_endpoint_url"
+                            type="text"
+                            class="block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
+                            placeholder="https://api.example.com"
+                        />
                     </div>
 
                     <div class="flex justify-end gap-3">
-                        <PrimaryButton type="submit" class="px-5 py-2 text-sm">Update</PrimaryButton>
-                        <SecondaryButton @click="closeDetailSiteModal">Close</SecondaryButton>
+                        <SecondaryButton type="button" @click="closeEditModal">Cancel</SecondaryButton>
+                        <PrimaryButton type="submit" :disabled="updating" :loading="updating" loading-text="Updating...">Update Site</PrimaryButton>
                     </div>
                 </div>
             </form>

@@ -7,7 +7,13 @@ use Inertia\Inertia;
 class LogPM2Controller extends Controller
 {
     protected string $basePath;
+    
     public function __construct() {
+        // Admin can view, Super Admin has full access
+        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Forbidden. Only Admin or Super Admin can view PM2 logs.');
+        }
+        
         $this->basePath = env('LOG_PM2_PATH', '/var/www/html/log_pm2');
     }
 

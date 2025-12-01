@@ -56,21 +56,41 @@ class MySiteController extends Controller
 
     public function update(Request $request)
     {
+        // Only super_admin can edit sites
+        if (!auth()->user() || !auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only Super Admin can edit sites.'
+            ], 403);
+        }
+
         $request->validate([
             'id' => 'required|integer',
+            'site_name' => 'nullable|string|max:255',
             'port_pm2' => 'nullable|string',
             'api_endpoint_url' => 'nullable|string',
         ]);
 
         try {
-            $this->siteBuildService->updateSite($request->id, [
+            $updateData = array_filter([
+                'site_name' => $request->input('site_name'),
                 'port_pm2' => $request->input('port_pm2'),
                 'api_endpoint_url' => $request->input('api_endpoint_url'),
-            ]);
+            ], function($value) {
+                return $value !== null;
+            });
 
-            return redirect()->route('my_site.index')->with('success', 'Site updated successfully!');
+            $this->siteBuildService->updateSite($request->id, $updateData);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Site updated successfully!'
+            ]);
         } catch (\Exception $e) {
-            return redirect()->route('my_site.index')->with('error', 'Failed to update site: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update site: ' . $e->getMessage()
+            ], 400);
         }
     }
 
