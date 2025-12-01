@@ -48,9 +48,9 @@ class MySiteController extends Controller
                 $request->input('port_pm2')
             );
 
-            return redirect()->route('my-sites.index')->with('success', 'Site created successfully!');
+            return redirect()->route('my_site.index')->with('success', 'Site created successfully!');
         } catch (\Exception $e) {
-            return redirect()->route('my-sites.index')->with('error', 'Failed to create site: ' . $e->getMessage());
+            return redirect()->route('my_site.index')->with('error', 'Failed to create site: ' . $e->getMessage());
         }
     }
 
@@ -68,9 +68,9 @@ class MySiteController extends Controller
                 'api_endpoint_url' => $request->input('api_endpoint_url'),
             ]);
 
-            return redirect()->route('my-sites.index')->with('success', 'Site updated successfully!');
+            return redirect()->route('my_site.index')->with('success', 'Site updated successfully!');
         } catch (\Exception $e) {
-            return redirect()->route('my-sites.index')->with('error', 'Failed to update site: ' . $e->getMessage());
+            return redirect()->route('my_site.index')->with('error', 'Failed to update site: ' . $e->getMessage());
         }
     }
 
