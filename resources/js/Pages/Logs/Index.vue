@@ -26,7 +26,8 @@ const previousSubfolder = computed(() => {
 
 
         <div class="space-y-6">
-            <!-- Breadcrumb Navigation -->\n            <div class="bg-white rounded-2xl shadow-lg px-6 py-4">
+            <!-- Breadcrumb Navigation -->
+            <div class="bg-white rounded-2xl shadow-lg px-6 py-4">
                 <div class="flex items-center gap-2 text-sm">
                     <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -41,7 +42,8 @@ const previousSubfolder = computed(() => {
                 </div>
             </div>
 
-            <!-- Folders Card -->\n            <div v-if="folders.length > 0" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <!-- Folders Card -->
+            <div v-if="folders.length > 0" class="bg-white rounded-2xl shadow-lg overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
                     <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
                         <svg class="h-5 w-5 shrink-0 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,7 +71,8 @@ const previousSubfolder = computed(() => {
                 </div>
             </div>
 
-            <!-- Files Card -->\n            <div v-if="files.length > 0" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <!-- Files Card -->
+            <div v-if="files.length > 0" class="bg-white rounded-2xl shadow-lg overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
                     <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
                         <svg class="h-5 w-5 shrink-0 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +121,8 @@ const previousSubfolder = computed(() => {
                 </div>
             </div>
 
-            <!-- Empty State -->\n            <div v-if="folders.length === 0 && files.length === 0" class="bg-white rounded-2xl shadow-lg p-12">
+            <!-- Empty State -->
+            <div v-if="folders.length === 0 && files.length === 0" class="bg-white rounded-2xl shadow-lg p-12">
                 <div class="flex flex-col items-center justify-center text-slate-500">
                     <svg class="h-16 w-16 mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
