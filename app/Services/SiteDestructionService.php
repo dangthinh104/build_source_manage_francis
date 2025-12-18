@@ -24,32 +24,14 @@ class SiteDestructionService
     {
         // Normalize path separators for cross-platform support
         $normalizedPath = str_replace('\\', '/', trim($path));
-        
+
         // Do not allow empty paths
         if (empty($normalizedPath)) {
             Log::warning('SiteDestructionService: Empty path provided');
             return false;
         }
 
-        // Do not allow root paths or common system folders (Linux)
-        $linuxBlacklist = ['/', '/*', '/etc', '/bin', '/usr', '/var', '/home', '/root', '/tmp'];
-        foreach ($linuxBlacklist as $b) {
-            if ($normalizedPath === $b || strpos($normalizedPath, $b . '/') === 0) {
-                Log::warning('SiteDestructionService: Path matches Linux blacklist', ['path' => $path, 'match' => $b]);
-                return false;
-            }
-        }
 
-        // Windows system folders blacklist
-        $windowsBlacklist = ['c:/', 'c:/windows', 'c:/program files', 'c:/users'];
-        $lowerPath = strtolower($normalizedPath);
-        foreach ($windowsBlacklist as $b) {
-            if ($lowerPath === $b || strpos($lowerPath, $b . '/') === 0 && strpos($lowerPath, 'sourcecode') === false) {
-                // Allow paths that contain 'sourcecode' as they are likely project directories
-                Log::warning('SiteDestructionService: Path matches Windows blacklist', ['path' => $path, 'match' => $b]);
-                return false;
-            }
-        }
 
         // Get project root from database Parameter (consistent with SiteBuildService)
         $projectRoot = $this->getParameter('path_project', env('PATH_PROJECT', '/var/www/html'));
@@ -89,7 +71,7 @@ class SiteDestructionService
             $segments = array_filter(explode('/', $normalizedPath));
             return count($segments) >= 3;
         }
-        
+
         return false;
     }
 
