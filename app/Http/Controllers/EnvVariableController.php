@@ -10,10 +10,14 @@ class EnvVariableController extends Controller
 {
     public function __construct()
     {
-        // Only admin and super_admin can manage environment variables
-        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
-            abort(403, 'Forbidden. Only Admin or Super Admin can manage environment variables.');
-        }
+        // Use middleware for auth check - runs at proper time in request lifecycle
+        $this->middleware('auth');
+        $this->middleware(function ($request, $next) {
+            if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
+                abort(403, 'Forbidden. Only Admin or Super Admin can manage environment variables.');
+            }
+            return $next($request);
+        });
     }
 
     public function index()
@@ -47,7 +51,11 @@ class EnvVariableController extends Controller
             'variable_value' => $encryptedValue,
         ]);
 
-        return response()->json($data);
+        return response()->json([
+            'success' => true,
+            'message' => 'Variable created successfully',
+            'data' => $data,
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -63,15 +71,23 @@ class EnvVariableController extends Controller
         $envVariable->update([
             'variable_value' => $encryptedValue,
         ]);
-        return response()->json($envVariable);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Variable updated successfully',
+            'data' => $envVariable,
+        ]);
     }
 
     public function destroy($id)
     {
         $envVariable = EnvVariable::findOrFail($id);
         $envVariable->delete();
-        return response()->json($envVariable);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Variable deleted successfully',
+        ]);
     }
 
 }
-

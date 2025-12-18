@@ -177,13 +177,16 @@ const selectedVariable = ref(null);
 const storeVariable = async () => {
     try {
         const response = await axios.post('/envVariables', newVariable);
-        if (response.status === 200) {
+        if (response.data.success) {
             newVariable.variable_name = '';
             newVariable.variable_value = '';
             location.reload();
+        } else {
+            alert('Failed to add variable: ' + (response.data.message || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error when add env:', error);
+        alert('Error when adding variable: ' + (error.response?.data?.message || error.message));
     }
 };
 
@@ -195,12 +198,15 @@ const editVariable = (variable) => {
 const updateVariable = async (updatedVariable) => {
     try {
         const response = await axios.put(`/envVariables/${updatedVariable.id}`, updatedVariable);
-        if (response.status === 200) {
+        if (response.data.success) {
             isEditModalOpen.value = false;
             location.reload();
+        } else {
+            alert('Failed to update variable: ' + (response.data.message || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error when edit:', error);
+        alert('Error when updating variable: ' + (error.response?.data?.message || error.message));
     }
 };
 
@@ -208,11 +214,14 @@ const deleteVariable = async (id) => {
     if (confirm('Confirm delete env?')) {
         try {
             const response = await axios.delete(`/envVariables/${id}`);
-            if (response.status === 200) {
+            if (response.data.success) {
                 location.reload();
+            } else {
+                alert('Failed to delete variable: ' + (response.data.message || 'Unknown error'));
             }
         } catch (error) {
             console.error('Error when delete env:', error);
+            alert('Error when deleting variable: ' + (error.response?.data?.message || error.message));
         }
     }
 };
