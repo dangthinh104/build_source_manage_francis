@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Parameter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Jobs\SiteDestructionJob;
@@ -21,21 +22,88 @@ class SiteDestructionService
      */
     protected function validatePath(string $path): bool
     {
-        // Do not allow empty, root paths, or common system folders
-        $blacklist = ['/', '/*', '/etc', '/bin', '/usr', '/var', '/home'];
-        foreach ($blacklist as $b) {
-            if (trim($path) === $b || stripos($path, $b) === 0) {
+        // Normalize path separators for cross-platform support
+        $normalizedPath = str_replace('\\', '/', trim($path));
+        
+        // Do not allow empty paths
+        if (empty($normalizedPath)) {
+            Log::warning('SiteDestructionService: Empty path provided');
+            return false;
+        }
+
+        // Do not allow root paths or common system folders (Linux)
+        $linuxBlacklist = ['/', '/*', '/etc', '/bin', '/usr', '/var', '/home', '/root', '/tmp'];
+        foreach ($linuxBlacklist as $b) {
+            if ($normalizedPath === $b || strpos($normalizedPath, $b . '/') === 0) {
+                Log::warning('SiteDestructionService: Path matches Linux blacklist', ['path' => $path, 'match' => $b]);
                 return false;
             }
         }
 
-        // Basic safe check: path must be under configured project path
-        $projectRoot = config('app.path_project', env('PATH_PROJECT', '/var/www/html'));
-        if (stripos(realpath($path) ?: $path, realpath($projectRoot) ?: $projectRoot) !== 0) {
-            return false;
+        // Windows system folders blacklist
+        $windowsBlacklist = ['c:/', 'c:/windows', 'c:/program files', 'c:/users'];
+        $lowerPath = strtolower($normalizedPath);
+        foreach ($windowsBlacklist as $b) {
+            if ($lowerPath === $b || strpos($lowerPath, $b . '/') === 0 && strpos($lowerPath, 'sourcecode') === false) {
+                // Allow paths that contain 'sourcecode' as they are likely project directories
+                Log::warning('SiteDestructionService: Path matches Windows blacklist', ['path' => $path, 'match' => $b]);
+                return false;
+            }
         }
 
-        return true;
+        // Get project root from database Parameter (consistent with SiteBuildService)
+        $projectRoot = $this->getParameter('path_project', env('PATH_PROJECT', '/var/www/html'));
+        $normalizedProjectRoot = str_replace('\\', '/', trim($projectRoot));
+
+        // If path starts with the project root, it's valid
+        if (stripos($normalizedPath, $normalizedProjectRoot) === 0) {
+            return true;
+        }
+
+        // Additional check: if the path looks like a valid absolute path and exists, allow it
+        // This handles cases where the site was created before path_project was configured
+        if ($this->isValidProjectPath($path)) {
+            return true;
+        }
+
+        Log::warning('SiteDestructionService: Path not under project root', [
+            'path' => $path,
+            'projectRoot' => $projectRoot,
+            'normalizedPath' => $normalizedPath,
+            'normalizedProjectRoot' => $normalizedProjectRoot,
+        ]);
+
+        return false;
+    }
+
+    /**
+     * Check if a path looks like a valid project path (exists and is a directory).
+     */
+    protected function isValidProjectPath(string $path): bool
+    {
+        // Check if the path exists and is a directory
+        if (is_dir($path)) {
+            // Additional safety: path should have at least 3 segments
+            // e.g., /var/www/mysite or C:\Projects\mysite
+            $normalizedPath = str_replace('\\', '/', $path);
+            $segments = array_filter(explode('/', $normalizedPath));
+            return count($segments) >= 3;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Get parameter value from database or fallback to default.
+     */
+    protected function getParameter(string $key, $default = null)
+    {
+        try {
+            $parameter = Parameter::where('key', $key)->first();
+            return $parameter ? $parameter->value : $default;
+        } catch (\Exception $e) {
+            return $default;
+        }
     }
 
     public function destroy(string $siteFolderPath, string $appName = null): array
