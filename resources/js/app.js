@@ -8,9 +8,12 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import Vue3Toastify from 'vue3-toastify';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+// Glob all page components - the warnings are harmless when using single bundle
+const pages = import.meta.glob('./Pages/**/*.vue');
+
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+    resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, pages),
     setup({ el, App, props, plugin }) {
         return createApp({ render: () => h(App, props) })
             .use(plugin)
@@ -22,3 +25,4 @@ createInertiaApp({
         color: '#4B5563',
     },
 });
+

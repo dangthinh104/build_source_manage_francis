@@ -29,6 +29,13 @@ export default defineConfig({
                 chunkFileNames: 'assets/app.js',
                 assetFileNames: 'assets/[name].[ext]',
             },
+            // Suppress warnings about dynamic/static import conflicts - harmless with single bundle
+            onwarn(warning, warn) {
+                if (warning.message?.includes('dynamic import will not move module')) {
+                    return; // Suppress this specific warning
+                }
+                warn(warning);
+            },
         },
         // Disable CSS code splitting - bundle all CSS into one file
         cssCodeSplit: false,
