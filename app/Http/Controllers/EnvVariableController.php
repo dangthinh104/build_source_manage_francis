@@ -8,20 +8,20 @@ use Inertia\Inertia;
 
 class EnvVariableController extends Controller
 {
-    public function __construct()
+    /**
+     * Check if current user has admin privileges.
+     * Aborts with 403 if not authorized.
+     */
+    private function checkAdminAccess(): void
     {
-        // Use middleware for auth check - runs at proper time in request lifecycle
-        $this->middleware('auth');
-        $this->middleware(function ($request, $next) {
-            if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
-                abort(403, 'Forbidden. Only Admin or Super Admin can manage environment variables.');
-            }
-            return $next($request);
-        });
+        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Forbidden. Only Admin or Super Admin can manage environment variables.');
+        }
     }
 
     public function index()
     {
+        $this->checkAdminAccess();
 
         $envVariables = EnvVariable::all()->map(function ($variable) {
             return [
@@ -39,6 +39,8 @@ class EnvVariableController extends Controller
 
     public function store(Request $request)
     {
+        $this->checkAdminAccess();
+
         $request->validate([
             'variable_name' => 'required|string|max:255',
             'variable_value' => 'required|string',
@@ -60,6 +62,8 @@ class EnvVariableController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->checkAdminAccess();
+
         $envVariable = EnvVariable::findOrFail($id);
 
         $request->validate([
@@ -81,6 +85,8 @@ class EnvVariableController extends Controller
 
     public function destroy($id)
     {
+        $this->checkAdminAccess();
+
         $envVariable = EnvVariable::findOrFail($id);
         $envVariable->delete();
 
@@ -89,5 +95,4 @@ class EnvVariableController extends Controller
             'message' => 'Variable deleted successfully',
         ]);
     }
-
 }
