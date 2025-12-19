@@ -139,6 +139,15 @@ return [
             'days' => 14,
         ],
 
+        // Build service log channel - stores build execution logs with 7-day retention
+        'build' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/build/build.log'),
+            'level' => 'debug',
+            'days' => 7,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

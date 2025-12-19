@@ -53,7 +53,7 @@ class ParameterSeeder extends Seeder
                 'key' => 'APP_ENV_BUILD',
                 'value' => 'dev',
                 'type' => 'string',
-                'description' => 'Defines the source .env file to copy from. Values: "dev" (.env.dev), "prod" (.env.prod). Default is .env.example.',
+                'description' => 'Defines the source .env file to copy from. Values: "dev" (.env.develop), "prod" (.env.prod). Default is .env.example.',
             ],
         ];
 

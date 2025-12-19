@@ -70,7 +70,7 @@ class SiteBuildServiceTest extends TestCase
     }
 
     /**
-     * Test Case 2: Uses .env.dev when APP_ENV_BUILD parameter is 'dev'
+     * Test Case 2: Uses .env.develop when APP_ENV_BUILD parameter is 'dev'
      */
     public function test_it_uses_env_dev_when_parameter_is_dev(): void
     {
@@ -116,7 +116,7 @@ class SiteBuildServiceTest extends TestCase
         Log::shouldReceive('warning')
             ->once()
             ->withArgs(function ($message) {
-                return str_contains($message, 'Preferred source file') && 
+                return str_contains($message, 'Preferred source file') &&
                        str_contains($message, 'falling back to .env.example');
             });
 
@@ -163,7 +163,7 @@ class SiteBuildServiceTest extends TestCase
     {
         // Arrange
         file_put_contents("{$this->testProjectPath}/.env.example", "APP_NAME=TestApp\n");
-        
+
         // Mock EnvManagerService
         $this->mock(EnvManagerService::class, function ($mock) {
             $mock->shouldReceive('updateOrCreateEnv')->once();

@@ -107,6 +107,14 @@ class SiteBuildService
      */
     protected function executeBuild(object $siteObject, ?int $userId): array
     {
+        $buildLogger = \Log::channel('build');
+        
+        $buildLogger->info('Build started', [
+            'site_id' => $siteObject->id,
+            'site_name' => $siteObject->site_name,
+            'user_id' => $userId,
+        ]);
+
         // Get shell script path
         $pathSH = $this->storage->path($siteObject->sh_content_dir);
 
@@ -115,28 +123,60 @@ class SiteBuildService
         $returnVar = null;
         exec("sudo /bin/bash " . escapeshellarg($pathSH) . " 2>&1", $output, $returnVar);
 
+        // Determine build status for log filename
+        $buildStatus = $returnVar === 0 ? 'success' : 'failed';
+        $timestamp = now()->format('Ymd_His');
+
         // Prepare update data
         $update = [
             'last_build'      => now(),
             'last_user_build' => $userId,
-            'path_log'        => $siteObject->site_name . '/log/execution_' . ($output[0] ?? 'error') . '.log',
+            'path_log'        => $siteObject->site_name . '/log/execution_' . $timestamp . '_' . $buildStatus . '.log',
         ];
 
         // Update success/fail timestamp
         if ($returnVar === 0) {
             $update['last_build_success'] = now();
+            $buildLogger->info('Build completed successfully', [
+                'site_name' => $siteObject->site_name,
+                'return_var' => $returnVar,
+            ]);
         } else {
             $update['last_build_fail'] = now();
-        }
-
-        // Generate env file if enabled
-        if ($siteObject->is_generate_env) {
-            $this->generateEnvFile($siteObject->path_source_code, [
-                'PORT_PM2'      => $siteObject->port_pm2,
-                'VITE_API_URL'  => $siteObject->api_endpoint_url,
-                'VITE_WEB_NAME' => $siteObject->site_name,
+            $buildLogger->error('Build failed', [
+                'site_name' => $siteObject->site_name,
+                'return_var' => $returnVar,
+                'output' => implode("\n", array_slice($output, -10)), // Last 10 lines
             ]);
         }
+
+        // Generate env file if enabled (wrapped in try-catch to prevent build failure)
+        if ($siteObject->is_generate_env) {
+            try {
+                $this->generateEnvFile($siteObject->path_source_code, [
+                    'PORT_PM2'      => $siteObject->port_pm2,
+                    'VITE_API_URL'  => $siteObject->api_endpoint_url,
+                    'VITE_WEB_NAME' => $siteObject->site_name,
+                ]);
+                $buildLogger->info('Env file generated', ['site_name' => $siteObject->site_name]);
+            } catch (\Exception $e) {
+                $buildLogger->warning('Failed to generate env file', [
+                    'site_name' => $siteObject->site_name,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Write build output to log file in storage
+        $logContent = "=== Build Log ===\n";
+        $logContent .= "Site: {$siteObject->site_name}\n";
+        $logContent .= "Time: " . now()->format('Y-m-d H:i:s') . "\n";
+        $logContent .= "Status: {$buildStatus}\n";
+        $logContent .= "Return Code: {$returnVar}\n";
+        $logContent .= "=================\n\n";
+        $logContent .= implode("\n", $output);
+
+        $this->storage->put($update['path_log'], $logContent);
 
         // Update database
         $status = DB::table('my_site')
@@ -148,11 +188,14 @@ class SiteBuildService
             \App\Models\BuildHistory::create([
                 'site_id' => $siteObject->id,
                 'user_id' => $userId,
-                'status'  => $returnVar === 0 ? 'success' : 'failed',
+                'status'  => $buildStatus,
                 'output_log' => implode("\n", $output),
             ]);
         } catch (\Exception $e) {
-            // fail silently; logging could be added here
+            $buildLogger->error('Failed to record build history', [
+                'site_id' => $siteObject->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return [
@@ -165,23 +208,47 @@ class SiteBuildService
 
     /**
      * Send build notification email
+     *
+     * @param object $siteObject Site database object
+     * @param string $logPath Path to the build log file
+     * @param string $userEmail Email of the user who triggered the build
+     * @param string $status Build status ('success' or 'failed')
      */
-    public function sendBuildNotification(object $siteObject, string $logPath, string $userEmail): void
+    public function sendBuildNotification(object $siteObject, string $logPath, string $userEmail, string $status = 'success'): void
     {
+        $buildLogger = \Log::channel('build');
+
         if (!$this->storage->exists($logPath)) {
+            $buildLogger->warning('Cannot send notification: log file not found', [
+                'site_name' => $siteObject->site_name,
+                'log_path' => $logPath,
+            ]);
             return;
         }
 
         $mailContent = $this->storage->get($logPath);
-        $devEmail = $this->getParameter('dev_email', env('DEV_EMAIL', 'dev@example.com'));
+        $devEmail = Parameter::getValue('dev_email', env('DEV_EMAIL', 'dev@example.com'));
 
-        Mail::to($devEmail)->send(new BuildNotification(
-            $siteObject->site_name,
-            'success',
-            now()->format('Y-m-d H:i:s'),
-            $mailContent,
-            $userEmail
-        ));
+        try {
+            Mail::to($devEmail)->send(new BuildNotification(
+                $siteObject->site_name,
+                $status,
+                now()->format('Y-m-d H:i:s'),
+                $mailContent,
+                $userEmail
+            ));
+
+            $buildLogger->info('Build notification email sent', [
+                'site_name' => $siteObject->site_name,
+                'status' => $status,
+                'to' => $devEmail,
+            ]);
+        } catch (\Exception $e) {
+            $buildLogger->error('Failed to send build notification email', [
+                'site_name' => $siteObject->site_name,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -214,19 +281,19 @@ class SiteBuildService
     {
         $siteObject = DB::table('my_site')
             ->selectRaw('
-                my_site.id, 
-                port_pm2, 
-                path_source_code, 
-                site_name, 
-                api_endpoint_url, 
-                is_generate_env, 
-                path_log, 
-                sh_content_dir, 
-                last_build, 
-                my_site.created_at, 
-                my_site.updated_at, 
-                users.name, 
-                last_build_success, 
+                my_site.id,
+                port_pm2,
+                path_source_code,
+                site_name,
+                api_endpoint_url,
+                is_generate_env,
+                path_log,
+                sh_content_dir,
+                last_build,
+                my_site.created_at,
+                my_site.updated_at,
+                users.name,
+                last_build_success,
                 last_build_fail
             ')
             ->join('users', 'my_site.last_user_build', '=', 'users.id')
@@ -238,18 +305,13 @@ class SiteBuildService
         }
 
         $shContent = '';
-        $envVariables = '';
 
         if ($this->storage->exists($siteObject->sh_content_dir)) {
             $shContent = $this->storage->get($siteObject->sh_content_dir);
         }
 
-        if (function_exists('readNodeEnv')) {
-            $envVariables = readNodeEnv($siteObject->path_source_code);
-        }
-
         return [
-            'sh_content'         => $shContent . "\n\n\n\n====================== ENV File ===================\n" . $envVariables,
+            'sh_content'         => $shContent,
             'site_name'          => $siteObject->site_name,
             'last_path_log'      => $siteObject->path_log,
             'sh_content_dir'     => $siteObject->sh_content_dir,
@@ -271,13 +333,13 @@ class SiteBuildService
      */
     public function generateShellScript(string $siteName, string $folderSourcePath, bool $includePM2): string
     {
-        $pathProject = $this->getParameter('path_project', env('PATH_PROJECT', '/var/www/html'));
-        $buildManagerPath = $this->getParameter('build_manager_path', $pathProject . '/build_source_manage');
+        $pathProject = Parameter::getValue('path_project', env('PATH_PROJECT', '/var/www/html'));
+        $buildManagerPath = Parameter::getValue('build_manager_path', $pathProject . '/build_source_manage');
 
         // Feature flags from parameters
-        $gitAutoPull = filter_var($this->getParameter('git_auto_pull', 'true'), FILTER_VALIDATE_BOOLEAN);
-        $npmInstallOnBuild = filter_var($this->getParameter('npm_install_on_build', 'true'), FILTER_VALIDATE_BOOLEAN);
-        $defaultPm2Port = $this->getParameter('default_pm2_port_start', '3000');
+        $gitAutoPull = filter_var(Parameter::getValue('git_auto_pull', 'true'), FILTER_VALIDATE_BOOLEAN);
+        $npmInstallOnBuild = filter_var(Parameter::getValue('npm_install_on_build', 'true'), FILTER_VALIDATE_BOOLEAN);
+        $defaultPm2Port = Parameter::getValue('default_pm2_port_start', '3000');
 
         // PM2 section can export a default port so pm2 scripts can reference it
         $pm2Process = '';
@@ -292,7 +354,7 @@ class SiteBuildService
 
         // Escape folder path for safe use in shell script
         $escapedFolderPath = escapeshellarg($folderSourcePath);
-        
+
         return <<<EOT
 #!/bin/bash
 time="\$(date +%s)"
@@ -353,7 +415,7 @@ EOT;
 
     /**
      * Generate or update .env file with dynamic source selection
-     * 
+     *
      * @param string $path Project root path
      * @param array $custom Custom environment variables to set
      * @throws \Exception When no valid source .env file exists
@@ -388,7 +450,7 @@ EOT;
 
     /**
      * Determine the appropriate .env source file based on APP_ENV_BUILD parameter
-     * 
+     *
      * @param string $path Project root path
      * @return string Absolute path to the source .env file
      * @throws \Exception When no valid source file exists
@@ -396,12 +458,12 @@ EOT;
     protected function determineEnvSourcePath(string $path): string
     {
         $projectRoot = rtrim($path, DIRECTORY_SEPARATOR);
-        $appEnvBuild = $this->getParameter('APP_ENV_BUILD', '');
+        $appEnvBuild = Parameter::getValue('APP_ENV_BUILD', '');
 
         // Determine source file based on parameter
         $sourceFile = match (strtolower(trim($appEnvBuild))) {
             'prod' => '.env.prod',
-            'dev' => '.env.dev',
+            'dev' => '.env.develop',
             default => '.env.example',
         };
 
@@ -427,24 +489,17 @@ EOT;
 
         // No valid source file found - throw exception
         throw new \Exception(
-            "No valid .env source file found. Checked: {$sourcePath}" . 
+            "No valid .env source file found. Checked: {$sourcePath}" .
             ($sourceFile !== '.env.example' ? " and {$projectRoot}/.env.example" : '')
         );
     }
 
-    /**
-     * Get parameter value from database or fallback to default
-     * @deprecated Use Parameter::getValue() directly instead
-     */
-    protected function getParameter(string $key, $default = null)
-    {
-        return Parameter::getValue($key, $default);
-    }
+
 
     /**
      * Ensure directory exists with proper permissions
      * Creates the directory recursively if it doesn't exist
-     * 
+     *
      * @param string $path Directory path to ensure exists
      * @throws \Exception When directory cannot be created or is not writable
      */
@@ -455,7 +510,7 @@ EOT;
             if (!is_writable($path)) {
                 // Try to chmod without sudo (will work if current user owns the dir)
                 @chmod($path, 0775);
-                
+
                 if (!is_writable($path)) {
                     throw new \Exception(
                         "Directory exists but is not writable: {$path}. " .
@@ -468,7 +523,7 @@ EOT;
 
         // Set umask to allow group write permissions
         $oldUmask = umask(0002);
-        
+
         try {
             // Create directory with 775 permissions (rwxrwxr-x)
             if (!@mkdir($path, 0775, true)) {
@@ -481,10 +536,10 @@ EOT;
                     "docker exec francis_app chown -R www-data:www-data " . escapeshellarg($path)
                 );
             }
-            
+
             // Ensure permissions are correct
             @chmod($path, 0775);
-            
+
         } finally {
             // Restore original umask
             umask($oldUmask);

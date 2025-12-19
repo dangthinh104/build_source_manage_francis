@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('my_site', function (Blueprint $table) {
-            $table->boolean('is_generate_env')->nullable()->default(false);
+            $table->boolean('is_generate_env')->nullable()->default(true);
         });
     }
 
