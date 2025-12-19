@@ -25,6 +25,10 @@ class DatabaseSeeder extends Seeder
 
         // Seed default parameters
         $this->call(ParameterSeeder::class);
+        
+        // Seed role permissions (must be before SuperAdminSeeder)
+        $this->call(RolePermissionSeeder::class);
+        
         $this->call(\Database\Seeders\SuperAdminSeeder::class);
     }
 }

@@ -77,15 +77,11 @@ class SiteDestructionService
 
     /**
      * Get parameter value from database or fallback to default.
+     * @deprecated Use Parameter::getValue() directly instead
      */
     protected function getParameter(string $key, $default = null)
     {
-        try {
-            $parameter = Parameter::where('key', $key)->first();
-            return $parameter ? $parameter->value : $default;
-        } catch (\Exception $e) {
-            return $default;
-        }
+        return Parameter::getValue($key, $default);
     }
 
     public function destroy(string $siteFolderPath, string $appName = null): array
@@ -106,7 +102,10 @@ class SiteDestructionService
         // Dispatch the async job to perform destruction. This avoids blocking the request and
         // allows the operation to run under the queue worker's permissions.
         try {
-            SiteDestructionJob::dispatch($siteFolderPath, $this->storage->path(basename($siteFolderPath)), $appName, $apacheConf);
+            // Use appName for storage path (site_name folder in my_site_storage)
+            // NOT basename of siteFolderPath which is different (e.g., /var/www/test vs test.example.com)
+            $storageFolderName = $appName ?: basename($siteFolderPath);
+            SiteDestructionJob::dispatch($siteFolderPath, $this->storage->path($storageFolderName), $appName, $apacheConf);
             $result['messages'][] = 'Destruction job dispatched';
             $result['success'] = true;
         } catch (\Exception $e) {

@@ -151,7 +151,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import axios from 'axios';
-import {Head, usePage} from '@inertiajs/vue3';
+import {Head, usePage, router} from '@inertiajs/vue3';
 import EditModal from './EditModal.vue';
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Codemirror } from 'vue-codemirror';
@@ -180,7 +180,7 @@ const storeVariable = async () => {
         if (response.data.success) {
             newVariable.variable_name = '';
             newVariable.variable_value = '';
-            location.reload();
+            router.reload({ only: ['envVariables'] });
         } else {
             alert('Failed to add variable: ' + (response.data.message || 'Unknown error'));
         }
@@ -200,7 +200,7 @@ const updateVariable = async (updatedVariable) => {
         const response = await axios.put(`/envVariables/${updatedVariable.id}`, updatedVariable);
         if (response.data.success) {
             isEditModalOpen.value = false;
-            location.reload();
+            router.reload({ only: ['envVariables'] });
         } else {
             alert('Failed to update variable: ' + (response.data.message || 'Unknown error'));
         }
@@ -215,7 +215,7 @@ const deleteVariable = async (id) => {
         try {
             const response = await axios.delete(`/envVariables/${id}`);
             if (response.data.success) {
-                location.reload();
+                router.reload({ only: ['envVariables'] });
             } else {
                 alert('Failed to delete variable: ' + (response.data.message || 'Unknown error'));
             }

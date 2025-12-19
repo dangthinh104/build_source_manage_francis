@@ -361,15 +361,19 @@ EOT;
     protected function generateEnvFile(string $path, array $custom): void
     {
         $sourcePath = $this->determineEnvSourcePath($path);
-        $targetPath = rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.env';
+        $projectRoot = rtrim($path, DIRECTORY_SEPARATOR);
+        $targetPath = $projectRoot . DIRECTORY_SEPARATOR . '.env';
+
+        // Ensure directory exists with proper permissions
+        $this->ensureDirectoryExists($projectRoot);
 
         // Copy source to target if target doesn't exist
         if (!file_exists($targetPath)) {
             if (!copy($sourcePath, $targetPath)) {
-                throw new \Exception("Failed to copy {$sourcePath} to {$targetPath}");
+                throw new \Exception("Failed to copy {$sourcePath} to {$targetPath}. Check directory permissions.");
             }
-            // Preserve file permissions
-            @chmod($targetPath, 0644);
+            // Set file permissions to be writable
+            @chmod($targetPath, 0664);
         }
 
         // Use EnvManagerService to safely update/create .env values
@@ -430,14 +434,68 @@ EOT;
 
     /**
      * Get parameter value from database or fallback to default
+     * @deprecated Use Parameter::getValue() directly instead
      */
     protected function getParameter(string $key, $default = null)
     {
+        return Parameter::getValue($key, $default);
+    }
+
+    /**
+     * Ensure directory exists with proper permissions
+     * Creates the directory recursively if it doesn't exist
+     * 
+     * @param string $path Directory path to ensure exists
+     * @throws \Exception When directory cannot be created or is not writable
+     */
+    protected function ensureDirectoryExists(string $path): void
+    {
+        // If directory already exists, check if it's writable
+        if (is_dir($path)) {
+            if (!is_writable($path)) {
+                // Try to chmod without sudo (will work if current user owns the dir)
+                @chmod($path, 0775);
+                
+                if (!is_writable($path)) {
+                    throw new \Exception(
+                        "Directory exists but is not writable: {$path}. " .
+                        "Please run: docker exec francis_app chown -R www-data:www-data " . escapeshellarg($path)
+                    );
+                }
+            }
+            return;
+        }
+
+        // Set umask to allow group write permissions
+        $oldUmask = umask(0002);
+        
         try {
-            $parameter = Parameter::where('key', $key)->first();
-            return $parameter ? $parameter->value : $default;
-        } catch (\Exception $e) {
-            return $default;
+            // Create directory with 775 permissions (rwxrwxr-x)
+            if (!@mkdir($path, 0775, true)) {
+                $error = error_get_last();
+                throw new \Exception(
+                    "Failed to create directory: {$path}. " .
+                    ($error['message'] ?? 'Unknown error') . ". " .
+                    "Please ensure parent directory is writable or run: " .
+                    "docker exec francis_app mkdir -p " . escapeshellarg($path) . " && " .
+                    "docker exec francis_app chown -R www-data:www-data " . escapeshellarg($path)
+                );
+            }
+            
+            // Ensure permissions are correct
+            @chmod($path, 0775);
+            
+        } finally {
+            // Restore original umask
+            umask($oldUmask);
+        }
+
+        // Final check
+        if (!is_writable($path)) {
+            throw new \Exception(
+                "Created directory but it's not writable: {$path}. " .
+                "Please run: docker exec francis_app chown -R www-data:www-data " . escapeshellarg($path)
+            );
         }
     }
 }
