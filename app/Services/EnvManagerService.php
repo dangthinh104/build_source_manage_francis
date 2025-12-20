@@ -26,14 +26,7 @@ class EnvManagerService
             }
         }
 
-        // Create a timestamped backup
-        $backupPath = $envPath . '.' . date('Ymd_His') . '.bak';
-        if (false === @copy($envPath, $backupPath)) {
-            // Not a fatal error; warn by throwing only if original exists but not copyable
-            if (file_exists($envPath)) {
-                throw new Exception("Failed to create backup of .env at {$backupPath}");
-            }
-        }
+
 
         if (!is_writable($envPath)) {
             // Attempt to set writable and if still not writable, throw
