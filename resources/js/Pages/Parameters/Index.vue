@@ -27,7 +27,7 @@
         </button>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-lg overflow-hidden max-w-full">
         <!-- Mobile Card View -->
         <div class="block md:hidden divide-y divide-slate-100">
           <div 
@@ -40,18 +40,18 @@
                 {{ param.key.charAt(0).toUpperCase() }}
               </div>
               <div class="min-w-0 flex-1">
-                <p class="font-semibold text-slate-900">{{ param.key }}</p>
+                <p class="font-semibold text-slate-900 truncate">{{ param.key }}</p>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">{{ param.type }}</span>
               </div>
             </div>
             <div class="bg-slate-50 p-3 rounded-xl space-y-2">
               <div>
                 <p class="text-xs text-slate-500">Value</p>
-                <p class="text-sm text-slate-700 truncate">{{ param.value }}</p>
+                <p class="text-sm text-slate-700 break-all">{{ param.value }}</p>
               </div>
               <div v-if="param.description">
                 <p class="text-xs text-slate-500">Description</p>
-                <p class="text-sm text-slate-600">{{ param.description }}</p>
+                <p class="text-sm text-slate-600 break-words">{{ param.description }}</p>
               </div>
             </div>
             <div class="flex gap-2">
@@ -79,38 +79,40 @@
 
         <!-- Desktop Table View -->
         <div class="hidden md:block overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200">
+          <table class="w-full divide-y divide-slate-200 table-fixed">
             <thead class="bg-gradient-to-r from-slate-50 to-slate-100">
               <tr>
-                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Key</th>
-                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Value</th>
-                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type</th>
+                <th class="w-48 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Key</th>
+                <th class="w-64 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Value</th>
+                <th class="w-24 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type</th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Description</th>
-                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
+                <th class="w-48 px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-slate-100">
               <tr v-for="param in parameters" :key="param.id" class="hover:bg-slate-50 transition-colors duration-150">
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4">
                   <div class="flex items-center">
                     <div class="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
                       {{ param.key.charAt(0).toUpperCase() }}
                     </div>
-                    <div class="ml-4">
-                      <div class="text-sm font-semibold text-slate-900">{{ param.key }}</div>
+                    <div class="ml-4 min-w-0">
+                      <div class="text-sm font-semibold text-slate-900 truncate">{{ param.key }}</div>
                     </div>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-slate-600 truncate max-w-xl">{{ param.value }}</div>
+                <td class="px-6 py-4">
+                  <div class="text-sm text-slate-600 truncate" :title="param.value">{{ param.value }}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4">
                   <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{{ param.type }}</span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{{ param.description }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td class="px-6 py-4 text-sm text-slate-600">
+                  <div class="line-clamp-2" :title="param.description">{{ param.description }}</div>
+                </td>
+                <td class="px-6 py-4 text-right text-sm font-medium">
                   <div class="flex items-center justify-end gap-2">
-                    <button @click="openEdit(param)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary rounded-lg font-medium hover:bg-primary-50 transition-all duration-200">
+                    <button @click="openEdit(param)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary rounded-lg font-medium hover:bg-primary-100 transition-all duration-200">
                       <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
@@ -129,7 +131,7 @@
                 <td colspan="5" class="px-6 py-12 text-center">
                   <div class="flex flex-col items-center justify-center text-slate-500">
                     <svg class="h-12 w-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <p class="text-sm font-medium">No parameters found</p>
                     <p class="text-xs mt-1">Use the Add New button to create one</p>

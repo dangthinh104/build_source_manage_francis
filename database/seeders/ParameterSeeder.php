@@ -55,6 +55,12 @@ class ParameterSeeder extends Seeder
                 'type' => 'string',
                 'description' => 'Defines the source .env file to copy from. Values: "dev" (.env.develop), "prod" (.env.prod). Default is .env.example.',
             ],
+            [
+                'key' => 'LOG_PM2_PATH',
+                'value' => env('LOG_PM2_PATH', '/var/www/html/log_pm2'),
+                'type' => 'path',
+                'description' => 'Path to PM2 log files directory for viewing site logs',
+            ],
         ];
 
         foreach ($parameters as $param) {

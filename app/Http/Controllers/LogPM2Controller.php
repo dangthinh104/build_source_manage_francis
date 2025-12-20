@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Parameter;
 use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
 
@@ -14,7 +15,7 @@ class LogPM2Controller extends Controller
             abort(403, 'Forbidden. Only Admin or Super Admin can view PM2 logs.');
         }
         
-        $this->basePath = env('LOG_PM2_PATH', '/var/www/html/log_pm2');
+        $this->basePath = Parameter::getValue('LOG_PM2_PATH', env('LOG_PM2_PATH', '/var/www/html/log_pm2'));
     }
 
     // Display the list of log folders and files
@@ -24,6 +25,19 @@ class LogPM2Controller extends Controller
 
         $notFound = false;
         $requestedFolder = $subfolder;
+        $basePathError = null;
+
+        // Check if base path exists first
+        if (!File::exists($this->basePath) || !File::isDirectory($this->basePath)) {
+            return Inertia::render('Logs/Index', [
+                'folders' => [],
+                'files' => [],
+                'subfolder' => '',
+                'notFound' => false,
+                'requestedFolder' => '',
+                'basePathError' => "Log directory does not exist: {$this->basePath}. Please check LOG_PM2_PATH parameter.",
+            ]);
+        }
 
         // If directory doesn't exist, show root folders with 404 warning
         if (!File::exists($directoryPath)) {
@@ -93,6 +107,7 @@ class LogPM2Controller extends Controller
             'subfolder' => $subfolder,
             'notFound' => $notFound,
             'requestedFolder' => $requestedFolder,
+            'basePathError' => null,
         ]);
     }
 

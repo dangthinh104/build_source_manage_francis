@@ -10,6 +10,7 @@ const props = defineProps({
     subfolder: String,
     notFound: Boolean,
     requestedFolder: String,
+    basePathError: String,
 });
 
 // Create a computed property using Composition API
@@ -38,8 +39,26 @@ const previousSubfolder = computed(() => {
         </template>
 
         <div class="space-y-6">
+            <!-- Base Path Error Banner -->
+            <div v-if="basePathError" class="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 rounded-2xl p-6 shadow-lg">
+                <div class="flex items-start gap-4">
+                    <div class="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-rose-400 to-red-500 flex items-center justify-center shadow-md">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-rose-900">Log Directory Not Found</h3>
+                        <p class="text-sm text-rose-700 mt-1">{{ basePathError }}</p>
+                        <p class="text-sm text-rose-600 mt-2">
+                            Go to <a href="/parameters" class="underline font-medium hover:text-rose-800">Parameters</a> to update the LOG_PM2_PATH setting.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- 404 Warning Banner -->
-            <div v-if="notFound" class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-lg">
+            <div v-if="notFound && !basePathError" class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-lg">
                 <div class="flex items-start gap-4">
                     <div class="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
