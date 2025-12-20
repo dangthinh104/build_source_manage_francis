@@ -3,56 +3,41 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue";
 
 const props = defineProps({
     filename: String,
-    content: String,
     subfolder: String,
+    content: String,
+    fileSize: Number,
+    fileSizeFormatted: String,
 });
 
-// Expand state
-const isExpanded = ref(false);
+// State
 const isFullScreen = ref(false);
+const isExpanded = ref(false);
 
-// Computed download URL
-const downloadUrl = computed(() => {
-    return route('logs.download', { subfolder: props.subfolder, filename: props.filename });
-});
+// Computed
+const isErrorFile = computed(() => props.filename?.toLowerCase().includes('error'));
 
-// Toggle expand
+// Methods
 const toggleExpand = () => {
     isExpanded.value = !isExpanded.value;
 };
 
-// Toggle fullscreen
 const toggleFullScreen = () => {
     isFullScreen.value = !isFullScreen.value;
 };
 
-// Direct download - use native browser download
 const downloadLog = () => {
-    // Create a blob from the content and trigger download
-    const blob = new Blob([props.content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = props.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    window.location.href = route('logs.download', { 
+        subfolder: props.subfolder, 
+        filename: props.filename 
+    });
 };
-
-// Determine if file is an error log
-const isErrorFile = computed(() => {
-    return props.filename?.toLowerCase().includes('error');
-});
 </script>
 
 <template>
-    <Head :title="`Log: ${filename}`" />
+    <Head :title="`Raw Log: ${filename}`" />
 
     <AuthenticatedLayout>
         <template #header>
@@ -63,8 +48,8 @@ const isErrorFile = computed(() => {
                     </svg>
                 </div>
                 <div>
-                    <h2 class="font-semibold text-xl text-slate-800 leading-tight">Log Viewer</h2>
-                    <p class="text-sm text-slate-500">{{ subfolder }}</p>
+                    <h2 class="font-semibold text-xl text-slate-800 leading-tight">Raw Log Viewer</h2>
+                    <p class="text-sm text-slate-500">{{ subfolder }}/{{ filename }}</p>
                 </div>
             </div>
         </template>
@@ -82,10 +67,19 @@ const isErrorFile = computed(() => {
                             </div>
                             <div>
                                 <h1 class="text-lg font-semibold text-slate-900 font-mono">{{ filename }}</h1>
-                                <p class="text-xs text-slate-500">{{ content?.length || 0 }} characters</p>
+                                <p class="text-xs text-slate-500">{{ fileSizeFormatted }} • {{ content?.length || 0 }} characters</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <Link
+                                :href="route('logs.advance', { subfolder, filename })"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg font-medium hover:from-violet-600 hover:to-purple-600 shadow-sm hover:shadow-md transition-all duration-200"
+                            >
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                Switch to Advance
+                            </Link>
                             <Link
                                 :href="route('logs.index', { subfolder })"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-all duration-200"
@@ -138,7 +132,7 @@ const isErrorFile = computed(() => {
                 <!-- Log Content -->
                 <div class="relative">
                     <pre 
-                        class="font-mono p-6 overflow-auto transition-all duration-300 bg-gray-900 text-green-400"
+                        class="font-mono p-6 overflow-auto transition-all duration-300 bg-gray-900 custom-scrollbar-dark"
                         :class="[
                             isExpanded ? 'max-h-[80vh]' : 'max-h-96',
                             isErrorFile ? 'text-rose-400' : 'text-green-400'
@@ -163,6 +157,7 @@ const isErrorFile = computed(() => {
                             </svg>
                         </div>
                         <span class="text-white font-mono font-medium">{{ filename }}</span>
+                        <span class="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">RAW</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <button
@@ -186,7 +181,7 @@ const isErrorFile = computed(() => {
                     </div>
                 </div>
                 <!-- Content -->
-                <div class="flex-1 overflow-auto p-6">
+                <div class="flex-1 overflow-auto p-6 custom-scrollbar-dark">
                     <pre 
                         class="font-mono whitespace-pre-wrap break-words text-sm"
                         :class="isErrorFile ? 'text-rose-400' : 'text-green-400'"

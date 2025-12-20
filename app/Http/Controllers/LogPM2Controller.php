@@ -2,23 +2,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\Parameter;
+use App\Services\LogParserService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
 
 class LogPM2Controller extends Controller
 {
     protected string $basePath;
+    protected LogParserService $logParser;
     
-    public function __construct() {
+    public function __construct(LogParserService $logParser) {
         // Admin can view, Super Admin has full access
         if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
             abort(403, 'Forbidden. Only Admin or Super Admin can view PM2 logs.');
         }
         
         $this->basePath = Parameter::getValue('LOG_PM2_PATH', env('LOG_PM2_PATH', '/var/www/html/log_pm2'));
+        $this->logParser = $logParser;
     }
 
-    // Display the list of log folders and files
+    /**
+     * Display the list of log folders and files
+     */
     public function index($subfolder = '')
     {
         $directoryPath = $this->basePath . ($subfolder ? '/' . $subfolder : '');
@@ -111,31 +117,87 @@ class LogPM2Controller extends Controller
         ]);
     }
 
-    // View the contents of a log file
-    public function view($subfolder, $filename)
+    /**
+     * Raw Log Viewer - displays file content as-is
+     */
+    public function raw(Request $request, $subfolder, $filename)
     {
         $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
 
-        if (File::exists($filePath)) {
-            $content = File::get($filePath);
-            return Inertia::render('Logs/View', [
-                'filename' => $filename,
-                'content' => $content,
-                'subfolder' => $subfolder
-            ]);
-        } else {
+        if (!File::exists($filePath)) {
             abort(404, "File not found");
         }
+
+        $content = File::get($filePath);
+        $fileSize = filesize($filePath);
+
+        return Inertia::render('Logs/Raw', [
+            'filename' => $filename,
+            'subfolder' => $subfolder,
+            'content' => $content,
+            'fileSize' => $fileSize,
+            'fileSizeFormatted' => $this->formatFileSize($fileSize),
+        ]);
     }
 
-    // Download the log file
+    /**
+     * Advance Log Viewer - parses, strips ANSI, groups stack traces
+     */
+    public function advance(Request $request, $subfolder, $filename)
+    {
+        $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
+
+        if (!File::exists($filePath)) {
+            abort(404, "File not found");
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(200, max(20, (int) $request->query('limit', 100)));
+        $query = $request->query('query', null);
+
+        // Parse log file with stack trace grouping
+        $result = $this->logParser->readLogFileAdvance($filePath, $limit, $page, $query);
+
+        // Get available files in this folder for file selector
+        $folderPath = $this->basePath . '/' . $subfolder;
+        $availableFiles = [];
+        if (File::exists($folderPath) && File::isDirectory($folderPath)) {
+            $availableFiles = array_map('basename', File::files($folderPath));
+            sort($availableFiles);
+        }
+
+        return Inertia::render('Logs/Advance', [
+            'filename' => $filename,
+            'subfolder' => $subfolder,
+            'logs' => $result['logs'],
+            'pagination' => $result['pagination'],
+            'fileSize' => $result['file_size'],
+            'fileSizeFormatted' => $result['file_size_formatted'],
+            'availableFiles' => $availableFiles,
+            'currentQuery' => $query,
+        ]);
+    }
+
+    /**
+     * Legacy view method - redirect to advance
+     */
+    public function view(Request $request, $subfolder, $filename)
+    {
+        return redirect()->route('logs.advance', [
+            'subfolder' => $subfolder,
+            'filename' => $filename,
+        ]);
+    }
+
+    /**
+     * Download the log file
+     */
     public function download($subfolder, $filename)
     {
         $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
 
         if (File::exists($filePath)) {
             $content = File::get($filePath);
-            // Step 2: Create the log file
             $filePathTemp = public_path('build/' . $filename);
 
             file_put_contents($filePathTemp, $content);
@@ -143,5 +205,15 @@ class LogPM2Controller extends Controller
         } else {
             abort(404, "File not found");
         }
+    }
+
+    /**
+     * Format file size in human-readable format
+     */
+    private function formatFileSize(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $factor = floor((strlen((string) $bytes) - 1) / 3);
+        return sprintf("%.2f %s", $bytes / pow(1024, $factor), $units[$factor] ?? 'TB');
     }
 }

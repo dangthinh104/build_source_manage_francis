@@ -66,9 +66,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/preferences', [UserPreferenceController::class, 'update'])->name('preferences.update');
 
     // Log Viewing - accessible to all authenticated users
-    Route::get('/logs/view/{subfolder}/{filename}', [LogPM2Controller::class, 'view'])->name('logs.view');
-    Route::get('/logs/download/{subfolder}/{filename}', [LogPM2Controller::class, 'download'])->name('logs.download');
-    Route::get('/logs/{subfolder?}', [LogPM2Controller::class, 'index'])->name('logs.index');
+    Route::prefix('logs')->name('logs.')->group(function () {
+        // Advance viewer (CloudWatch-style with parsed logs)
+        Route::get('/advance/{subfolder}/{filename}', [LogPM2Controller::class, 'advance'])->name('advance');
+        // Raw viewer (legacy - shows file content as-is)
+        Route::get('/raw/{subfolder}/{filename}', [LogPM2Controller::class, 'raw'])->name('raw');
+        // Legacy view route - redirects to advance
+        Route::get('/view/{subfolder}/{filename}', [LogPM2Controller::class, 'view'])->name('view');
+        // Download
+        Route::get('/download/{subfolder}/{filename}', [LogPM2Controller::class, 'download'])->name('download');
+        // Index (folder listing)
+        Route::get('/{subfolder?}', [LogPM2Controller::class, 'index'])->name('index');
+    });
 
     /*
     |--------------------------------------------------------------------------
