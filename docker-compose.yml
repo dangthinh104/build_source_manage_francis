@@ -1,0 +1,90 @@
+services:
+  # Laravel Application
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: francis_app
+    restart: unless-stopped
+    working_dir: /var/www/html/build_source
+    volumes:
+      - .:/var/www/html/build_source
+      - C:/SourceCode/nodejs-build:/var/www/html/nodejs_test
+      - C:/SourceCode/log_pm2:/var/www/html/log_pm2
+      - /var/www/html/build_source/vendor
+      - /var/www/html/build_source/node_modules
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    environment:
+      - APP_NAME=FrancisManage
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+      - APP_TIMEZONE=Asia/Ho_Chi_Minh
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=francis_db
+      - DB_USERNAME=francis
+      - DB_PASSWORD=secret
+      - CACHE_STORE=database
+      - QUEUE_CONNECTION=database
+      - SESSION_DRIVER=database
+      - VITE_DEV_SERVER=false
+      - VITE_API_URL=http://localhost:8000
+      - LOG_PM2_PATH=/var/www/html/log_pm2/
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - francis_network
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: francis_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: francis_db
+      MYSQL_USER: francis
+      MYSQL_PASSWORD: secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - francis_network
+
+  # phpMyAdmin (optional - for database management)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: francis_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: francis
+      PMA_PASSWORD: secret
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - francis_network
+
+networks:
+  francis_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local

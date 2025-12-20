@@ -64,6 +64,42 @@ class SiteBuildService
     }
 
     /**
+     * Regenerate shell script for an existing site
+     * Use this when the shell script template has been updated
+     */
+    public function regenerateShellScript(int $siteId): bool
+    {
+        $buildLogger = \Log::channel('build');
+
+        $siteObject = DB::table('my_site')->where('id', $siteId)->first();
+
+        if (!$siteObject) {
+            throw new \Exception('Site not found.');
+        }
+
+        // Determine if PM2 is enabled (has port_pm2 set)
+        $includePM2 = !empty($siteObject->port_pm2);
+
+        // Generate new shell script
+        $shellScript = $this->generateShellScript(
+            $siteObject->site_name,
+            $siteObject->path_source_code,
+            $includePM2
+        );
+
+        // Save to storage
+        $this->storage->put($siteObject->sh_content_dir, $shellScript);
+
+        $buildLogger->info('Shell script regenerated', [
+            'site_id' => $siteId,
+            'site_name' => $siteObject->site_name,
+            'sh_content_dir' => $siteObject->sh_content_dir,
+        ]);
+
+        return true;
+    }
+
+    /**
      * Build a site by ID
      */
     public function buildSiteById(int $siteId): array
@@ -108,7 +144,7 @@ class SiteBuildService
     protected function executeBuild(object $siteObject, ?int $userId): array
     {
         $buildLogger = \Log::channel('build');
-        
+
         $buildLogger->info('Build started', [
             'site_id' => $siteObject->id,
             'site_name' => $siteObject->site_name,
@@ -330,12 +366,12 @@ class SiteBuildService
 
     /**
      * Generate shell script for site build
+     * 
+     * Note: The script outputs to stdout/stderr which is captured by PHP exec().
+     * PHP then saves the complete output to a single log file with proper naming.
      */
     public function generateShellScript(string $siteName, string $folderSourcePath, bool $includePM2): string
     {
-        $pathProject = Parameter::getValue('path_project', env('PATH_PROJECT', '/var/www/html'));
-        $buildManagerPath = Parameter::getValue('build_manager_path', $pathProject . '/build_source_manage');
-
         // Feature flags from parameters
         $gitAutoPull = filter_var(Parameter::getValue('git_auto_pull', 'true'), FILTER_VALIDATE_BOOLEAN);
         $npmInstallOnBuild = filter_var(Parameter::getValue('npm_install_on_build', 'true'), FILTER_VALIDATE_BOOLEAN);
@@ -344,70 +380,80 @@ class SiteBuildService
         // PM2 section can export a default port so pm2 scripts can reference it
         $pm2Process = '';
         if ($includePM2) {
-            $pm2Process = "export PORT_PM2={$defaultPm2Port}\n" . $this->getPM2ScriptSection();
+            $pm2Process = $this->getPM2ScriptSection($defaultPm2Port);
         }
 
-        // Conditional steps
-        $gitPullStep = $gitAutoPull ? "echo \"-----\$(date): Start Pull Source-----\" >> \$LOG_FILE\nsudo git pull >> \$LOG_FILE 2>&1\nif [ \$? -ne 0 ]; then\n    echo \"Error: git pull failed\" >> \$LOG_FILE\n    echo \$time\n    exit 1\nfi\n\n" : '';
+        // Conditional steps - output to stdout
+        $gitPullStep = $gitAutoPull ? <<<'GITPULL'
+echo "-----$(date): Start Pull Source-----"
+sudo git pull 2>&1
+if [ $? -ne 0 ]; then
+    echo "Error: git pull failed"
+    exit 1
+fi
 
-        $npmInstallStep = $npmInstallOnBuild ? "echo \"-----\$(date): NPM Install-----\" >> \$LOG_FILE\nsudo npm install >> \$LOG_FILE 2>&1\n\n" : '';
+GITPULL : '';
+
+        $npmInstallStep = $npmInstallOnBuild ? <<<'NPMINSTALL'
+echo "-----$(date): NPM Install-----"
+sudo npm install 2>&1
+
+NPMINSTALL : '';
 
         // Escape folder path for safe use in shell script
         $escapedFolderPath = escapeshellarg($folderSourcePath);
 
         return <<<EOT
 #!/bin/bash
-time="\$(date +%s)"
-LOG_FILE="{$buildManagerPath}/storage/my_site_storage/{$siteName}/log/execution_\$time.log"
-touch \$LOG_FILE
+# Build script for {$siteName}
+# All output goes to stdout and is captured by PHP
 
-echo "-----\$(date): Start script-----" >> \$LOG_FILE
+echo "-----\$(date): Start script-----"
 
-echo "-----\$(date): cd {$escapedFolderPath} -----" >> \$LOG_FILE
-cd {$escapedFolderPath} >> \$LOG_FILE 2>&1
+echo "-----\$(date): cd {$escapedFolderPath}-----"
+cd {$escapedFolderPath} 2>&1
 if [ \$? -ne 0 ]; then
-    echo "Error: Failed to change directory" >> \$LOG_FILE
-    echo \$time
+    echo "Error: Failed to change directory to {$escapedFolderPath}"
     exit 1
 fi
 
-echo "-----\$(date): Git Status Source -----" >> \$LOG_FILE
-sudo git status >> \$LOG_FILE 2>&1
+echo "-----\$(date): Git Status-----"
+sudo git status 2>&1
 if [ \$? -ne 0 ]; then
-    echo "Error: git status failed" >> \$LOG_FILE
-    echo \$time
+    echo "Error: git status failed"
     exit 1
 fi
 
 {$gitPullStep}
 {$npmInstallStep}
-echo "-----\$(date): NPM BUILD-----" >> \$LOG_FILE
-sudo npm run build >> \$LOG_FILE 2>&1
+echo "-----\$(date): NPM BUILD-----"
+sudo npm run build 2>&1
 if [ \$? -ne 0 ]; then
-    echo "Error: npm run build fail" >> \$LOG_FILE
-    echo \$time
+    echo "Error: npm run build failed"
     exit 1
 fi
 
 {$pm2Process}
 
-echo "-----\$(date): Finish-----" >> \$LOG_FILE
-echo \$time
+echo "-----\$(date): Build completed successfully-----"
 exit 0
 EOT;
     }
 
     /**
      * Get PM2 script section
+     *
+     * @param string $defaultPm2Port Default port for PM2
      */
-    protected function getPM2ScriptSection(): string
+    protected function getPM2ScriptSection(string $defaultPm2Port): string
     {
         return <<<EOT
 # Run pm2 script
-sudo sh pm2_dev.sh >> \$LOG_FILE 2>&1
+echo "-----\$(date): Starting PM2-----"
+export PORT_PM2={$defaultPm2Port}
+sudo sh pm2_dev.sh 2>&1
 if [ \$? -ne 0 ]; then
-    echo "Error: pm2_dev.sh script failed" >> \$LOG_FILE
-    echo \$time
+    echo "Error: pm2_dev.sh script failed"
     exit 1
 fi
 EOT;
@@ -422,6 +468,7 @@ EOT;
      */
     protected function generateEnvFile(string $path, array $custom): void
     {
+        $buildLogger = \Log::channel('build');
         $sourcePath = $this->determineEnvSourcePath($path);
         $projectRoot = rtrim($path, DIRECTORY_SEPARATOR);
         $targetPath = $projectRoot . DIRECTORY_SEPARATOR . '.env';
@@ -429,23 +476,102 @@ EOT;
         // Ensure directory exists with proper permissions
         $this->ensureDirectoryExists($projectRoot);
 
-        // Copy source to target if target doesn't exist
-        if (!file_exists($targetPath)) {
-            if (!copy($sourcePath, $targetPath)) {
-                throw new \Exception("Failed to copy {$sourcePath} to {$targetPath}. Check directory permissions.");
-            }
-            // Set file permissions to be writable
-            @chmod($targetPath, 0664);
+        // Always copy source to target (replace existing .env with source template)
+        $buildLogger->info('Copying env source file', [
+            'source' => basename($sourcePath),
+            'target' => $targetPath,
+        ]);
+
+        if (!copy($sourcePath, $targetPath)) {
+            throw new \Exception("Failed to copy {$sourcePath} to {$targetPath}. Check directory permissions.");
         }
+        // Set file permissions to be writable
+        @chmod($targetPath, 0664);
+
+        // Replace ###VARIABLE_NAME placeholders with values from env_variables table
+        $this->replacePlaceholders($targetPath, $buildLogger);
 
         // Use EnvManagerService to safely update/create .env values
         try {
             $envService = app(EnvManagerService::class);
             $envService->updateOrCreateEnv($path, $custom);
+
+            $buildLogger->info('Env variables updated', [
+                'path' => $targetPath,
+                'variables' => array_keys($custom),
+            ]);
         } catch (\Exception $e) {
-            // Log exception silently; building should continue but admin should be notified in more advanced flows
-            \Log::warning('Failed to update .env file', ['error' => $e->getMessage(), 'path' => $path]);
+            $buildLogger->warning('Failed to update .env file', [
+                'error' => $e->getMessage(),
+                'path' => $path,
+            ]);
         }
+    }
+
+    /**
+     * Replace ###VARIABLE_NAME placeholders in .env file with values from env_variables table
+     *
+     * @param string $filePath Path to the .env file
+     * @param \Psr\Log\LoggerInterface $logger Logger instance
+     */
+    protected function replacePlaceholders(string $filePath, $logger): void
+    {
+        $content = file_get_contents($filePath);
+
+        // Find all ###VARIABLE_NAME patterns (including numbers: DB_DATABASE_23)
+        preg_match_all('/###([A-Z0-9_]+)/', $content, $matches);
+
+        if (empty($matches[1])) {
+            $logger->info('No placeholders found in env file');
+            return;
+        }
+
+        $variableNames = array_unique($matches[1]);
+        $logger->info('Found placeholders to replace', ['variables' => $variableNames]);
+
+        // Get all values from env_variables table and build lookup map
+        $envVariables = \App\Models\EnvVariable::whereIn('variable_name', $variableNames)->get();
+        
+        $valueMap = [];
+        foreach ($envVariables as $envVar) {
+            $decryptedValue = decryptValue($envVar->variable_value);
+            if ($decryptedValue !== false) {
+                $valueMap[$envVar->variable_name] = $decryptedValue;
+                $logger->info('Loaded variable', ['variable' => $envVar->variable_name]);
+            } else {
+                $logger->warning('Failed to decrypt env variable', [
+                    'variable' => $envVar->variable_name,
+                ]);
+            }
+        }
+
+        // Log placeholders not found in database
+        foreach ($variableNames as $varName) {
+            if (!isset($valueMap[$varName])) {
+                $logger->warning('Placeholder not found in env_variables table', [
+                    'placeholder' => '###' . $varName,
+                ]);
+            }
+        }
+
+        // Use preg_replace_callback to replace all placeholders in one pass
+        // This avoids ordering issues because each placeholder is matched exactly
+        $newContent = preg_replace_callback(
+            '/###([A-Z0-9_]+)/',
+            function ($match) use ($valueMap, $logger) {
+                $varName = $match[1];
+                if (isset($valueMap[$varName])) {
+                    $logger->info('Replacing placeholder', ['placeholder' => '###' . $varName]);
+                    return $valueMap[$varName];
+                }
+                // Keep original placeholder if no value found
+                return $match[0];
+            },
+            $content
+        );
+
+        file_put_contents($filePath, $newContent);
+        $logger->info('Placeholders replaced', ['count' => count($valueMap)]);
     }
 
     /**

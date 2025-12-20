@@ -16,12 +16,27 @@ class DashboardController extends Controller
         if (!Gate::allows('isAdmin')) {
             return redirect()->route('logs.index');
         }
-        // Statistics
+
+        // Basic Statistics
         $totalSites = MySite::count();
         $totalBuilds = BuildHistory::count();
         $successCount = BuildHistory::where('status', 'success')->count();
         $failedCount = BuildHistory::where('status', 'failed')->count();
         $successRate = $totalBuilds > 0 ? round(($successCount / $totalBuilds) * 100, 2) : 0;
+
+        // Today's builds with comparison
+        $todayBuilds = BuildHistory::whereDate('created_at', Carbon::today())->count();
+        $yesterdayBuilds = BuildHistory::whereDate('created_at', Carbon::yesterday())->count();
+        $buildsTrend = $yesterdayBuilds > 0 
+            ? round((($todayBuilds - $yesterdayBuilds) / $yesterdayBuilds) * 100) 
+            : ($todayBuilds > 0 ? 100 : 0);
+
+        // Average build duration (from created_at to updated_at)
+        $avgDurationSeconds = BuildHistory::whereNotNull('updated_at')
+            ->whereColumn('updated_at', '>', 'created_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, created_at, updated_at)) as avg_duration')
+            ->value('avg_duration') ?? 0;
+        $avgDuration = $this->formatDuration((int) $avgDurationSeconds);
 
         // Top builders by build count
         $topBuilders = User::select('users.id', 'users.name')
@@ -43,20 +58,53 @@ class DashboardController extends Controller
                     'site_name' => $b->site->site_name ?? 'Unknown',
                     'user_name' => $b->user->name ?? 'System',
                     'status' => $b->status,
-                    'created_at' => $this->formatTimeAgo($b->created_at),
+                    'created_at' => $b->created_at->diffForHumans(),
                 ];
             });
 
-        // Builds over last 7 days
+        // Site health summary (top 5 sites by build count)
+        $siteHealth = MySite::withCount([
+            'buildHistories as total_builds',
+            'buildHistories as success_builds' => fn($q) => $q->where('status', 'success'),
+        ])
+        ->orderByDesc('total_builds')
+        ->limit(5)
+        ->get()
+        ->map(fn($s) => [
+            'id' => $s->id,
+            'site_name' => $s->site_name,
+            'total_builds' => $s->total_builds,
+            'success_rate' => $s->total_builds > 0 
+                ? round(($s->success_builds / $s->total_builds) * 100) 
+                : 0,
+            'last_build_ago' => $s->last_build_success_ago ?? $s->last_build_fail_ago ?? '—',
+        ]);
+
+        // Problem sites (most failures)
+        $problemSites = MySite::select('my_site.id', 'my_site.site_name')
+            ->join('build_histories', 'my_site.id', '=', 'build_histories.site_id')
+            ->where('build_histories.status', 'failed')
+            ->selectRaw('my_site.id, my_site.site_name, COUNT(*) as fail_count')
+            ->groupBy('my_site.id', 'my_site.site_name')
+            ->orderByDesc('fail_count')
+            ->limit(3)
+            ->get();
+
+        // Enhanced builds last 7 days with success/fail breakdown
         $buildsLast7 = [];
         for ($i = 6; $i >= 0; $i--) {
             $day = Carbon::now()->subDays($i)->startOfDay();
             $next = (clone $day)->endOfDay();
-            $count = BuildHistory::whereBetween('created_at', [$day, $next])->count();
+            $success = BuildHistory::whereBetween('created_at', [$day, $next])
+                ->where('status', 'success')->count();
+            $failed = BuildHistory::whereBetween('created_at', [$day, $next])
+                ->where('status', 'failed')->count();
             $buildsLast7[] = [
                 'date' => $day->format('Y-m-d'),
                 'label' => $day->format('D'),
-                'count' => $count,
+                'success' => $success,
+                'failed' => $failed,
+                'total' => $success + $failed,
             ];
         }
 
@@ -65,10 +113,34 @@ class DashboardController extends Controller
             'totalBuilds' => $totalBuilds,
             'successRate' => $successRate,
             'failedCount' => $failedCount,
+            'todayBuilds' => $todayBuilds,
+            'yesterdayBuilds' => $yesterdayBuilds,
+            'buildsTrend' => $buildsTrend,
+            'avgDuration' => $avgDuration,
             'topBuilders' => $topBuilders,
             'recentBuilds' => $recentBuilds,
             'buildsLast7' => $buildsLast7,
+            'siteHealth' => $siteHealth,
+            'problemSites' => $problemSites,
         ]);
+    }
+
+    /**
+     * Format duration in seconds to human readable format
+     */
+    private function formatDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return $seconds . 's';
+        }
+        $minutes = floor($seconds / 60);
+        $secs = $seconds % 60;
+        if ($minutes < 60) {
+            return $secs > 0 ? "{$minutes}m {$secs}s" : "{$minutes}m";
+        }
+        $hours = floor($minutes / 60);
+        $mins = $minutes % 60;
+        return "{$hours}h {$mins}m";
     }
 
     /**

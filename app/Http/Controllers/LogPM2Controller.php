@@ -22,18 +22,29 @@ class LogPM2Controller extends Controller
     {
         $directoryPath = $this->basePath . ($subfolder ? '/' . $subfolder : '');
 
+        $notFound = false;
+        $requestedFolder = $subfolder;
+
+        // If directory doesn't exist, show root folders with 404 warning
         if (!File::exists($directoryPath)) {
-            abort(404, "Directory not found");
+            $notFound = true;
+            $directoryPath = $this->basePath;
+            $subfolder = '';
         }
 
         // Get folders and files in the current directory
         $folders = array_map('basename', File::directories($directoryPath));
         $files = array_map('basename', File::files($directoryPath));
+        
+        // Sort folders alphabetically for better UX
+        sort($folders);
 
         return Inertia::render('Logs/Index', [
             'folders' => $folders,
             'files' => $files,
-            'subfolder' => $subfolder
+            'subfolder' => $subfolder,
+            'notFound' => $notFound,
+            'requestedFolder' => $requestedFolder,
         ]);
     }
 

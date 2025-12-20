@@ -145,21 +145,27 @@ const checkDomain = (domain) => {
     const domainPattern = /^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,6}$/;
     return domainPattern.test(domain);
 }
-const buildSite = async (siteID,index) => {
+const buildSite = async (siteID, index) => {
     try {
         loadingIndices.value.push(index)
         const response = await axios.post(route('my_site.build_my_site'), {'site_id': siteID});
         if (response.data.status === 1) {
-            location.reload(); // Reloads the current page
+            toast('Build completed successfully! 🎉', {
+                type: 'success',
+                position: 'top-right',
+                duration: 4000
+            })
+            // Reload after short delay to show toast
+            setTimeout(() => location.reload(), 1500);
         } else {
-            toast(response.data.message, {
+            toast(response.data.message || 'Build failed', {
                 type: 'error',
                 position: 'top-right',
                 duration: 5000
             })
         }
     } catch (error) {
-        toast('Something went wrong', {
+        toast('Build failed: ' + (error.response?.data?.message || 'Something went wrong'), {
             type: 'error',
             position: 'top-right',
             duration: 5000
@@ -337,7 +343,10 @@ const performDeleteSite = async () => {
                         <tr
                             v-for="(site, index) in mySite"
                             :key="site.id"
-                            :class="index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'"
+                            :class="[
+                                index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60',
+                                loadingIndices.includes(index) ? 'opacity-60 pointer-events-none' : ''
+                            ]"
                             class="transition hover:bg-primary-50"
                         >
                             <td class="px-6 py-4 font-semibold text-slate-800">
@@ -362,33 +371,48 @@ const performDeleteSite = async () => {
                             </td>
                             <td class="px-6 py-4">
                                 <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-                                    {{ site.last_build_success || '—' }}
+                                    {{ site.last_build_success_ago || '—' }}
                                 </span>
                             </td>
                             <td class="px-6 py-4">
                                 <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
-                                    {{ site.last_build_fail || '—' }}
+                                    {{ site.last_build_fail_ago || '—' }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-slate-500">
-                                <p class="font-medium text-slate-700">{{ site.lastBuilder ? site.lastBuilder.name : '—' }}</p>
-                                <p class="text-xs">{{ site.last_build || 'No history' }}</p>
+                                <p class="font-medium text-slate-700">{{ site.last_builder ? site.last_builder.name : '—' }}</p>
+                                <p class="text-xs">{{ site.last_builder ? site.last_builder.email : '' }}</p>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
-                                    <SecondaryButton class="text-xs" @click="openSiteDetailDialog(site.id, index)">Details</SecondaryButton>
-                                    <SecondaryButton v-if="can.manage_mysites || isSuperAdmin" class="text-xs" @click="openEditModal(site.id)">Edit</SecondaryButton>
+                                    <SecondaryButton 
+                                        class="text-xs" 
+                                        @click="openSiteDetailDialog(site.id, index)"
+                                        :disabled="loadingIndices.includes(index)"
+                                    >Details</SecondaryButton>
+                                    <SecondaryButton 
+                                        v-if="can.manage_mysites || isSuperAdmin" 
+                                        class="text-xs" 
+                                        @click="openEditModal(site.id)"
+                                        :disabled="loadingIndices.includes(index)"
+                                    >Edit</SecondaryButton>
                                     <PrimaryButton
                                         v-if="can.build_mysites || hasAdminPrivileges"
                                         class="text-xs"
                                         type="button"
                                         :loading="loadingIndices.includes(index)"
+                                        :disabled="loadingIndices.includes(index)"
                                         loading-text="Building..."
                                         @click="buildSite(site.id, index)"
                                     >
                                         Build
                                     </PrimaryButton>
-                                    <SecondaryButton v-if="can.manage_mysites || isSuperAdmin" class="text-xs text-rose-600" @click="confirmDeleteSite(site)">Delete</SecondaryButton>
+                                    <SecondaryButton 
+                                        v-if="can.manage_mysites || isSuperAdmin" 
+                                        class="text-xs text-rose-600" 
+                                        @click="confirmDeleteSite(site)"
+                                        :disabled="loadingIndices.includes(index)"
+                                    >Delete</SecondaryButton>
                                 </div>
                             </td>
                         </tr>
