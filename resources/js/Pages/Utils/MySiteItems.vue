@@ -149,13 +149,27 @@ const buildSite = async (siteID, index) => {
     try {
         loadingIndices.value.push(index)
         const response = await axios.post(route('my_site.build_my_site'), {'site_id': siteID});
+        
+        // Handle async queue response
+        if (response.data.status === 'queued') {
+            toast('Build queued! Processing in background... ⏳', {
+                type: 'info',
+                position: 'top-right',
+                duration: 4000
+            })
+            
+            // Poll for build completion
+            pollBuildStatus(siteID, index);
+            return; // Don't remove from loadingIndices yet
+        }
+        
+        // Legacy: Handle synchronous success (if any)
         if (response.data.status === 1) {
             toast('Build completed successfully! 🎉', {
                 type: 'success',
                 position: 'top-right',
                 duration: 4000
             })
-            // Reload after short delay to show toast
             setTimeout(() => location.reload(), 1500);
         } else {
             toast(response.data.message || 'Build failed', {
@@ -163,6 +177,7 @@ const buildSite = async (siteID, index) => {
                 position: 'top-right',
                 duration: 5000
             })
+            loadingIndices.value = loadingIndices.value.filter(i => i !== index)
         }
     } catch (error) {
         toast('Build failed: ' + (error.response?.data?.message || 'Something went wrong'), {
@@ -170,9 +185,57 @@ const buildSite = async (siteID, index) => {
             position: 'top-right',
             duration: 5000
         })
-    } finally {
         loadingIndices.value = loadingIndices.value.filter(i => i !== index)
     }
+};
+
+// Poll for build completion status
+const pollBuildStatus = async (siteID, index) => {
+    const maxPolls = 120; // Max 6 minutes (120 * 3 seconds)
+    let polls = 0;
+    
+    const pollInterval = setInterval(async () => {
+        polls++;
+        
+        try {
+            const response = await axios.post(route('my_site.build_status'), { site_id: siteID });
+            const status = response.data.status;
+            
+            if (status === 'success') {
+                clearInterval(pollInterval);
+                toast('Build completed successfully! 🎉', {
+                    type: 'success',
+                    position: 'top-right',
+                    duration: 4000
+                })
+                setTimeout(() => location.reload(), 1500);
+            } else if (status === 'failed') {
+                clearInterval(pollInterval);
+                toast('Build failed. Check logs for details.', {
+                    type: 'error',
+                    position: 'top-right',
+                    duration: 5000
+                })
+                loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+            } else if (polls >= maxPolls) {
+                clearInterval(pollInterval);
+                toast('Build is taking longer than expected. Check logs for status.', {
+                    type: 'warning',
+                    position: 'top-right',
+                    duration: 5000
+                })
+                loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+            }
+            // If status is 'processing' or 'queued', continue polling
+        } catch (error) {
+            console.error('Error polling build status:', error);
+            // Continue polling on error (network issues, etc.)
+            if (polls >= maxPolls) {
+                clearInterval(pollInterval);
+                loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+            }
+        }
+    }, 3000); // Poll every 3 seconds
 };
 
 const openHistory = (siteID) => {
@@ -419,7 +482,7 @@ const performDeleteSite = async () => {
                                         Build
                                     </PrimaryButton>
                                     <SecondaryButton 
-                                        v-if="can.manage_mysites || isSuperAdmin" 
+                                        v-if="isSuperAdmin" 
                                         class="text-xs text-rose-600" 
                                         @click="confirmDeleteSite(site)"
                                         :disabled="loadingIndices.includes(index)"

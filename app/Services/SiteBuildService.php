@@ -1,21 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Contracts\BuildScriptGeneratorInterface;
+use App\Models\MySite;
 use App\Models\Parameter;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\BuildNotification;
 
+/**
+ * Service for managing site CRUD operations and script generation.
+ *
+ * Build execution is now handled by ProcessSiteBuild job.
+ */
 class SiteBuildService
 {
-    protected $storage;
+    protected Filesystem $storage;
+    protected BuildScriptGeneratorInterface $scriptGenerator;
 
-    public function __construct()
+    public function __construct(BuildScriptGeneratorInterface $scriptGenerator)
     {
         $this->storage = Storage::disk('my_site_storage');
+        $this->scriptGenerator = $scriptGenerator;
     }
 
     /**
@@ -26,26 +35,25 @@ class SiteBuildService
         $shContentDir = $siteName . "/sh/" . $siteName . "_build.sh";
         $logPathInit = $siteName . "/log/" . $siteName . "_first.log";
 
-        // Generate and store shell script
-        $shellScript = $this->generateShellScript($siteName, $folderSourcePath, $includePM2);
+        // Generate and store shell script using injected generator
+        $shellScript = $this->scriptGenerator->generate($siteName, $folderSourcePath, $includePM2);
         $this->storage->put($shContentDir, $shellScript);
 
         // Create initial log file
         $this->storage->put($logPathInit, str()->random());
 
-        // Insert site record
-        $dataInsert = [
+        // Insert site record using Eloquent
+        $site = MySite::create([
             'site_name'        => $siteName,
             'path_log'         => $logPathInit,
             'sh_content_dir'   => $shContentDir,
             'is_generate_env'  => 1,
-            'last_user_build'  => Auth::user()->id,
+            'last_user_build'  => Auth::id(),
             'path_source_code' => $folderSourcePath,
             'port_pm2'         => $portPM2,
-            'created_at'       => now(),
-        ];
+        ]);
 
-        return DB::table('my_site')->insert($dataInsert);
+        return $site !== null;
     }
 
     /**
@@ -53,14 +61,13 @@ class SiteBuildService
      */
     public function updateSite(int $siteId, array $data): bool
     {
-        $dataUpdate = [
-            'port_pm2'         => trim($data['port_pm2'] ?? ''),
-            'api_endpoint_url' => trim($data['api_endpoint_url'] ?? ''),
-            'last_user_build'  => Auth::user()->id,
-            'updated_at'       => now(),
-        ];
+        $site = MySite::findOrFail($siteId);
 
-        return DB::table('my_site')->where('id', $siteId)->update($dataUpdate);
+        return $site->update([
+            'port_pm2'         => $data['port_pm2'] ?? '',
+            'api_endpoint_url' => trim($data['api_endpoint_url'] ?? ''),
+            'last_user_build'  => Auth::id(),
+        ]);
     }
 
     /**
@@ -71,81 +78,91 @@ class SiteBuildService
     {
         $buildLogger = \Log::channel('build');
 
-        $siteObject = DB::table('my_site')->where('id', $siteId)->first();
-
-        if (!$siteObject) {
-            throw new \Exception('Site not found.');
-        }
+        $site = MySite::findOrFail($siteId);
 
         // Determine if PM2 is enabled (has port_pm2 set)
-        $includePM2 = !empty($siteObject->port_pm2);
+        $includePM2 = !empty($site->port_pm2);
 
-        // Generate new shell script
-        $shellScript = $this->generateShellScript(
-            $siteObject->site_name,
-            $siteObject->path_source_code,
+        // Generate new shell script using injected generator
+        $shellScript = $this->scriptGenerator->generate(
+            $site->site_name,
+            $site->path_source_code,
             $includePM2
         );
 
         // Save to storage
-        $this->storage->put($siteObject->sh_content_dir, $shellScript);
+        $this->storage->put($site->sh_content_dir, $shellScript);
 
         $buildLogger->info('Shell script regenerated', [
             'site_id' => $siteId,
-            'site_name' => $siteObject->site_name,
-            'sh_content_dir' => $siteObject->sh_content_dir,
+            'site_name' => $site->site_name,
+            'sh_content_dir' => $site->sh_content_dir,
         ]);
 
         return true;
     }
 
     /**
-     * Build a site by ID
+     * Build a site by ID.
+     *
+     * @deprecated Use ProcessSiteBuild::dispatch() instead for async execution.
+     *             This method now dispatches the job and returns immediately.
      */
     public function buildSiteById(int $siteId): array
     {
-        $siteObject = DB::table('my_site')->where('id', $siteId)->first();
+        $site = MySite::findOrFail($siteId);
 
-        if (!$siteObject) {
-            throw new \Exception('Site not found.');
-        }
+        // Dispatch async job
+        \App\Jobs\ProcessSiteBuild::dispatch($siteId, Auth::id());
 
-        return $this->executeBuild($siteObject, Auth::user()->id);
+        return [
+            'status' => 'queued',
+            'message' => 'Build has been queued for processing',
+            'site_id' => $siteId,
+        ];
     }
 
     /**
-     * Build a site by name (for outbound API calls)
+     * Build a site by name (for outbound API calls).
+     *
+     * @deprecated Use ProcessSiteBuild::dispatch() instead for async execution.
      */
     public function buildSiteByName(string $siteName, ?string $userName = null): array
     {
-        $siteObject = DB::table('my_site')->where('site_name', $siteName)->first();
+        $site = MySite::where('site_name', $siteName)->firstOrFail();
 
-        if (!$siteObject) {
-            throw new \Exception('Site not found.');
-        }
-
-        $userId = Auth::user()->id ?? null;
+        $userId = Auth::id();
 
         // If username provided, lookup user ID
         if ($userName) {
-            $user = DB::table('users')->where('name', $userName)->first();
+            $user = \App\Models\User::where('name', $userName)->first();
             if (!$user) {
                 throw new \Exception("Developer name not found: {$userName}");
             }
             $userId = $user->id;
         }
 
-        return $this->executeBuild($siteObject, $userId);
+        // Dispatch async job
+        \App\Jobs\ProcessSiteBuild::dispatch($site->id, $userId);
+
+        return [
+            'status' => 'queued',
+            'message' => 'Build has been queued for processing',
+            'site_name' => $siteName,
+        ];
     }
 
     /**
-     * Execute the actual build process
+     * Execute the actual build process.
+     *
+     * @deprecated Use ProcessSiteBuild job for async execution.
+     *             This method is kept for backward compatibility but will be removed.
      */
     protected function executeBuild(object $siteObject, ?int $userId): array
     {
         $buildLogger = \Log::channel('build');
 
-        $buildLogger->info('Build started', [
+        $buildLogger->info('Build started (legacy sync mode)', [
             'site_id' => $siteObject->id,
             'site_name' => $siteObject->site_name,
             'user_id' => $userId,
@@ -154,10 +171,10 @@ class SiteBuildService
         // Get shell script path
         $pathSH = $this->storage->path($siteObject->sh_content_dir);
 
-        // Execute shell script with escaped path to prevent injection
+        // Execute shell script WITHOUT sudo (security hardening)
         $output = [];
         $returnVar = null;
-        exec("sudo /bin/bash " . escapeshellarg($pathSH) . " 2>&1", $output, $returnVar);
+        exec("/bin/bash " . escapeshellarg($pathSH) . " 2>&1", $output, $returnVar);
 
         // Determine build status for log filename
         $buildStatus = $returnVar === 0 ? 'success' : 'failed';
@@ -190,7 +207,7 @@ class SiteBuildService
         if ($siteObject->is_generate_env) {
             try {
                 $this->generateEnvFile($siteObject->path_source_code, [
-                    'PORT_PM2'      => $siteObject->port_pm2,
+                    'PORT'          => $siteObject->port_pm2,
                     'VITE_API_URL'  => $siteObject->api_endpoint_url,
                     'VITE_WEB_NAME' => $siteObject->site_name,
                 ]);
@@ -214,10 +231,9 @@ class SiteBuildService
 
         $this->storage->put($update['path_log'], $logContent);
 
-        // Update database
-        $status = DB::table('my_site')
-            ->where('id', $siteObject->id)
-            ->update($update);
+        // Update database using Eloquent
+        $site = MySite::find($siteObject->id);
+        $status = $site ? $site->update($update) : false;
 
         // Record build history
         try {
@@ -292,21 +308,17 @@ class SiteBuildService
      */
     public function getLogContent(int $siteId): array
     {
-        $siteObject = DB::table('my_site')->where('id', $siteId)->first();
-
-        if (!$siteObject) {
-            throw new \Exception('Site not found.');
-        }
+        $site = MySite::findOrFail($siteId);
 
         $content = '';
-        if ($this->storage->exists($siteObject->path_log)) {
-            $content = $this->storage->get($siteObject->path_log);
+        if ($this->storage->exists($site->path_log)) {
+            $content = $this->storage->get($site->path_log);
         }
 
         return [
             'log_content' => $content,
-            'site_name'   => $siteObject->site_name,
-            'path_log'    => $siteObject->path_log,
+            'site_name'   => $site->site_name,
+            'path_log'    => $site->path_log,
         ];
     }
 
@@ -315,58 +327,34 @@ class SiteBuildService
      */
     public function getSiteDetails(int $siteId): array
     {
-        $siteObject = DB::table('my_site')
-            ->selectRaw('
-                my_site.id,
-                port_pm2,
-                path_source_code,
-                site_name,
-                api_endpoint_url,
-                is_generate_env,
-                path_log,
-                sh_content_dir,
-                last_build,
-                my_site.created_at,
-                my_site.updated_at,
-                users.name,
-                last_build_success,
-                last_build_fail
-            ')
-            ->join('users', 'my_site.last_user_build', '=', 'users.id')
-            ->where('my_site.id', $siteId)
-            ->first();
-
-        if (!$siteObject) {
-            throw new \Exception('Site not found.');
-        }
+        $site = MySite::with('lastBuilder')->findOrFail($siteId);
 
         $shContent = '';
-
-        if ($this->storage->exists($siteObject->sh_content_dir)) {
-            $shContent = $this->storage->get($siteObject->sh_content_dir);
+        if ($this->storage->exists($site->sh_content_dir)) {
+            $shContent = $this->storage->get($site->sh_content_dir);
         }
 
         return [
             'sh_content'         => $shContent,
-            'site_name'          => $siteObject->site_name,
-            'last_path_log'      => $siteObject->path_log,
-            'sh_content_dir'     => $siteObject->sh_content_dir,
-            'created_at'         => $siteObject->created_at,
-            'last_user_build'    => $siteObject->name,
-            'last_build_success' => $siteObject->last_build_success,
-            'last_build_fail'    => $siteObject->last_build_fail,
-            'last_build'         => $siteObject->last_build,
-            'port_pm2'           => $siteObject->port_pm2,
-            'path_source_code'   => $siteObject->path_source_code,
-            'api_endpoint_url'   => $siteObject->api_endpoint_url,
-            'is_generate_env'    => $siteObject->is_generate_env,
-            'id'                 => $siteObject->id,
+            'site_name'          => $site->site_name,
+            'last_path_log'      => $site->path_log,
+            'sh_content_dir'     => $site->sh_content_dir,
+            'created_at'         => $site->created_at,
+            'last_user_build'    => $site->lastBuilder?->name ?? 'Unknown',
+            'last_build_success' => $site->last_build_success,
+            'last_build_fail'    => $site->last_build_fail,
+            'last_build'         => $site->last_build,
+            'port_pm2'           => $site->port_pm2,
+            'path_source_code'   => $site->path_source_code,
+            'api_endpoint_url'   => $site->api_endpoint_url,
+            'is_generate_env'    => $site->is_generate_env,
+            'id'                 => $site->id,
         ];
     }
 
     /**
      * Generate shell script for site build
-     * 
+     *
      * Note: The script outputs to stdout/stderr which is captured by PHP exec().
      * PHP then saves the complete output to a single log file with proper naming.
      */
@@ -450,7 +438,6 @@ EOT;
         return <<<EOT
 # Run pm2 script
 echo "-----\$(date): Starting PM2-----"
-export PORT_PM2={$defaultPm2Port}
 sudo sh pm2_dev.sh 2>&1
 if [ \$? -ne 0 ]; then
     echo "Error: pm2_dev.sh script failed"
@@ -491,15 +478,35 @@ EOT;
         // Replace ###VARIABLE_NAME placeholders with values from env_variables table
         $this->replacePlaceholders($targetPath, $buildLogger);
 
+        // Read source content to check which keys exist
+        $sourceContent = file_get_contents($sourcePath);
+
+        // Filter custom array - only include keys that exist in source file (except PORT which is always set)
+        $filteredCustom = [];
+        foreach ($custom as $key => $value) {
+            if ($key === 'PORT' && !empty($value)) {
+                // PORT is always set if value exists
+                $filteredCustom[$key] = $value;
+            } elseif (preg_match('/^' . preg_quote($key, '/') . '=/m', $sourceContent) && !empty($value)) {
+                // Only set if key exists in source file and value is not empty
+                $filteredCustom[$key] = $value;
+            } elseif ($key === 'VITE_WEB_NAME' && preg_match('/^VITE_WEB_NAME=/m', $sourceContent)) {
+                // VITE_WEB_NAME can be set even if empty (uses site_name)
+                $filteredCustom[$key] = $value;
+            }
+        }
+
         // Use EnvManagerService to safely update/create .env values
         try {
-            $envService = app(EnvManagerService::class);
-            $envService->updateOrCreateEnv($path, $custom);
+            if (!empty($filteredCustom)) {
+                $envService = app(EnvManagerService::class);
+                $envService->updateOrCreateEnv($path, $filteredCustom);
 
-            $buildLogger->info('Env variables updated', [
-                'path' => $targetPath,
-                'variables' => array_keys($custom),
-            ]);
+                $buildLogger->info('Env variables updated', [
+                    'path' => $targetPath,
+                    'variables' => array_keys($filteredCustom),
+                ]);
+            }
         } catch (\Exception $e) {
             $buildLogger->warning('Failed to update .env file', [
                 'error' => $e->getMessage(),
@@ -531,7 +538,7 @@ EOT;
 
         // Get all values from env_variables table and build lookup map
         $envVariables = \App\Models\EnvVariable::whereIn('variable_name', $variableNames)->get();
-        
+
         $valueMap = [];
         foreach ($envVariables as $envVar) {
             $decryptedValue = decryptValue($envVar->variable_value);

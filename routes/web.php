@@ -16,6 +16,16 @@ use Inertia\Inertia;
 use App\Http\Controllers\Auth\TwoFactorController;
 
 Route::get('/', function () {
+    // Fix login loop: redirect authenticated users to dashboard
+    if (\Illuminate\Support\Facades\Auth::check()) {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        // Redirect based on role - admins go to dashboard, users go to my_site
+        if ($user->hasAdminPrivileges()) {
+            return redirect()->route('dashboard');
+        }
+        return redirect()->route('my_site.index');
+    }
+    
     return Inertia::render('Auth/Login', [
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
@@ -37,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-site-store', [MySiteController::class, 'store'])->name('my_site.store');
     Route::post('/my-site-update', [MySiteController::class, 'update'])->name('my_site.update');
     Route::post('/my-site-build', [MySiteController::class, 'buildMySite'])->name('my_site.build_my_site');
+    Route::post('/my-site-build-status', [MySiteController::class, 'getBuildStatus'])->name('my_site.build_status');
     Route::post('/my-site-delete', [MySiteController::class, 'deleteSite'])->name('my_site.delete');
     Route::post('/my-site-log-details', [MySiteController::class, 'getLogLastBuildByID'])->name('my_site.get_content_log');
     Route::post('/my-site-open-detail', [MySiteController::class, 'getAllDetailSiteByID'])->name('my_site.open_popup_detail');
@@ -83,6 +94,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/rbac/matrix', [RbacController::class, 'index'])
         ->name('rbac.matrix')
         ->middleware(RoleMiddleware::class . ':super_admin');
+
+    // Queue Manager (Admin and Super Admin)
+    Route::middleware(RoleMiddleware::class . ':admin')->prefix('queues')->name('queues.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\QueueManagerController::class, 'index'])->name('index');
+        Route::post('/retry/{uuid}', [\App\Http\Controllers\QueueManagerController::class, 'retry'])->name('retry');
+        Route::delete('/destroy/{uuid}', [\App\Http\Controllers\QueueManagerController::class, 'destroy'])->name('destroy');
+        Route::post('/retry-all', [\App\Http\Controllers\QueueManagerController::class, 'retryAll'])->name('retry-all');
+        Route::post('/flush', [\App\Http\Controllers\QueueManagerController::class, 'flush'])->name('flush');
+    });
 });
 
 // Public API for outbound build triggers

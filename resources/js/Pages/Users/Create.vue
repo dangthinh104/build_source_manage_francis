@@ -5,12 +5,19 @@ import {Head, Link, useForm} from '@inertiajs/vue3';
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import InputError from "@/Components/InputError.vue";
 
+const props = defineProps({
+    availableRoles: {
+        type: Array,
+        default: () => [{ value: 'user', label: 'User' }],
+    },
+});
+
 const form = useForm({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
-    role: 'Default',
+    role: 'user',
 });
 const submit = () => {
     form.errors.name = '';
@@ -101,8 +108,13 @@ const submit = () => {
                             v-model="form.role" 
                             class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400"
                         >
-                            <option value="Default">Default User</option>
-                            <option value="Admin">Administrator</option>
+                            <option 
+                                v-for="role in availableRoles" 
+                                :key="role.value" 
+                                :value="role.value"
+                            >
+                                {{ role.label }}
+                            </option>
                         </select>
                     </div>
 

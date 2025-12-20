@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Jobs\ProcessSiteBuild;
+use App\Models\BuildHistory;
 use App\Services\SiteBuildService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -51,7 +52,7 @@ class MySiteController extends Controller
             'site_name' => 'required|string|max:255',
             'folder_source_path' => ['required', 'string', 'max:500', 'regex:/^\/[a-zA-Z0-9\/_-]+$/', 'not_regex:/\\.\\.\\/|\\\\./'],
             'include_pm2' => 'boolean',
-            'port_pm2' => 'nullable|string|max:10',
+            'port_pm2' => 'nullable|max:10',
         ]);
 
         try {
@@ -81,7 +82,7 @@ class MySiteController extends Controller
         $request->validate([
             'id' => 'required|integer',
             'site_name' => 'nullable|string|max:255',
-            'port_pm2' => 'nullable|string',
+            'port_pm2' => 'nullable',
             'api_endpoint_url' => 'nullable|string',
         ]);
 
@@ -119,18 +120,47 @@ class MySiteController extends Controller
         }
 
         try {
-            if (!$request->has('site_id')) {
-                throw new \Exception('Site ID is required.');
-            }
+            $request->validate([
+                'site_id' => 'required|integer|exists:my_site,id',
+            ]);
 
-            $result = $this->siteBuildService->buildSiteById($request->site_id);
+            // Dispatch async job instead of synchronous build
+            ProcessSiteBuild::dispatch($request->site_id, auth()->id());
 
-            return response()->json(['status' => $result['status']]);
+            return response()->json([
+                'status' => 'queued',
+                'message' => 'Build has been queued for processing. Check build history for status updates.'
+            ]);
         } catch (\Exception $exp) {
             return response()->json([
                 'status' => 0,
                 'message' => $exp->getMessage()
             ], 400);
+        }
+    }
+
+    /**
+     * Get the current build status for a site.
+     * Used for frontend polling to track async build progress.
+     */
+    public function getBuildStatus(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'site_id' => 'required|integer|exists:my_site,id',
+            ]);
+
+            $latestBuild = BuildHistory::where('site_id', $request->site_id)
+                ->latest()
+                ->first();
+
+            return response()->json([
+                'status' => $latestBuild?->status ?? 'unknown',
+                'updated_at' => $latestBuild?->updated_at?->toIso8601String(),
+                'history_id' => $latestBuild?->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -167,7 +197,7 @@ class MySiteController extends Controller
             if ($result['status'] && $request->has('user')) {
                 $siteObject = \DB::table('my_site')->where('site_name', $siteName)->first();
                 $user = \DB::table('users')->where('name', $request->user)->first();
-                
+
                 if ($siteObject && $user) {
                     $this->siteBuildService->sendBuildNotification(
                         $siteObject,
@@ -263,7 +293,7 @@ class MySiteController extends Controller
                 if (str_ends_with($file, '.log')) {
                     $filename = basename($file);
                     $lastModified = $storage->lastModified($file);
-                    
+
                     $logs[] = [
                         'filename' => $filename,
                         'path' => $file,
