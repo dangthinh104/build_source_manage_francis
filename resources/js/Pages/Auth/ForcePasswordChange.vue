@@ -11,7 +11,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('password.change'), {
+    form.post(route('password.change.store'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
@@ -58,7 +58,7 @@ const submit = () => {
                 </div>
 
                 <div class="flex items-center justify-end mt-6">
-                    <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                    <PrimaryButton class="bg-indigo-600 text-white hover:bg-indigo-700" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                         Change Password
                     </PrimaryButton>
                 </div>

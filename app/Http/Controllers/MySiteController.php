@@ -49,10 +49,10 @@ class MySiteController extends Controller
         }
 
         $request->validate([
-            'site_name' => 'required|string|max:255',
-            'folder_source_path' => ['required', 'string', 'max:500', 'regex:/^\/[a-zA-Z0-9\/_-]+$/', 'not_regex:/\\.\\.\\/|\\\\./'],
+            'site_name' => 'required|string|max:255|unique:my_site,site_name',
+            'folder_source_path' => ['required', 'string', 'max:500', 'regex:/^\/[a-zA-Z0-9\/_-]+$/', 'not_regex:/\\.\\.\\/|\\\\./', 'unique:my_site,path_source_code'],
             'include_pm2' => 'boolean',
-            'port_pm2' => 'nullable|max:10',
+            'port_pm2' => 'nullable|max:10|unique:my_site,port_pm2',
         ]);
 
         try {
@@ -81,8 +81,8 @@ class MySiteController extends Controller
 
         $request->validate([
             'id' => 'required|integer',
-            'site_name' => 'nullable|string|max:255',
-            'port_pm2' => 'nullable',
+            'site_name' => 'nullable|string|max:255|unique:my_site,site_name,' . $request->id,
+            'port_pm2' => 'nullable|unique:my_site,port_pm2,' . $request->id,
             'api_endpoint_url' => 'nullable|string',
         ]);
 

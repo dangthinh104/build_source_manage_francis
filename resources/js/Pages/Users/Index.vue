@@ -1,8 +1,10 @@
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch, reactive } from 'vue';
+import debounce from 'lodash/debounce';
 import axios from 'axios';
 import InputError from "@/Components/InputError.vue";
 import DialogModal from '@/Components/DialogModal.vue';
@@ -11,9 +13,23 @@ import { toast } from 'vue3-toastify';
 
 const page = usePage();
 const props = defineProps({
-    users: Array,
+    users: Object, // Changed from Array to Object to support pagination
     can_manage_users: Boolean,
+    filters: Object,
 });
+
+const searchParams = reactive({
+    name: props.filters?.name || '',
+    email: props.filters?.email || '',
+});
+
+watch(searchParams, debounce((value) => {
+    router.get(route('users.index'), value, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true
+    });
+}, 300));
 
 const successMessage = ref('');
 const processingTwoFactor = ref({});
@@ -150,10 +166,10 @@ const toggleTwoFactor = async (userId, currentStatus) => {
         if (response.data.status === true) {
             toast.success(response.data.message);
             // Update the user in the list without full reload
-            const userIndex = props.users.findIndex(u => u.id === userId);
+            const userIndex = props.users.data.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
                 // Set to current timestamp if enabling, null if disabling
-                props.users[userIndex].two_factor_confirmed_at = currentStatus ? null : new Date().toISOString();
+                props.users.data[userIndex].two_factor_confirmed_at = currentStatus ? null : new Date().toISOString();
             }
         } else {
             toast.error(response.data.message || 'Failed to toggle 2FA');
@@ -239,7 +255,7 @@ const resetPassword = async (userId, userName) => {
                 <!-- Mobile Card View -->
                 <div class="block md:hidden divide-y divide-slate-100">
                     <div 
-                        v-for="user in users" 
+                        v-for="user in users.data" 
                         :key="'mobile-' + user.id"
                         class="p-4 space-y-3"
                     >
@@ -306,7 +322,7 @@ const resetPassword = async (userId, userName) => {
                             </button>
                         </div>
                     </div>
-                    <div v-if="users.length === 0" class="p-8 text-center">
+                    <div v-if="users.data.length === 0" class="p-8 text-center">
                         <svg class="h-12 w-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -326,6 +342,12 @@ const resetPassword = async (userId, userName) => {
                                         </svg>
                                         Name
                                     </div>
+                                    <input
+                                        v-model="searchParams.name"
+                                        type="text"
+                                        placeholder="Filter Name..."
+                                        class="mt-2 w-full px-2 py-1 text-xs border border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary font-normal"
+                                    />
                                 </th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                                     <div class="flex items-center gap-2">
@@ -334,6 +356,12 @@ const resetPassword = async (userId, userName) => {
                                         </svg>
                                         Email
                                     </div>
+                                    <input
+                                        v-model="searchParams.email"
+                                        type="text"
+                                        placeholder="Filter Email..."
+                                        class="mt-2 w-full px-2 py-1 text-xs border border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary font-normal"
+                                    />
                                 </th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Role</th>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">2FA</th>
@@ -341,7 +369,7 @@ const resetPassword = async (userId, userName) => {
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-slate-100">
-                            <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50 transition-colors duration-150">
+                            <tr v-for="user in users.data" :key="user.id" class="hover:bg-slate-50 transition-colors duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
@@ -419,7 +447,7 @@ const resetPassword = async (userId, userName) => {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="users.length === 0">
+                            <tr v-if="users.data.length === 0">
                                 <td colspan="5" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-slate-500">
                                         <svg class="h-12 w-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,6 +460,10 @@ const resetPassword = async (userId, userName) => {
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50" v-if="users.links && users.links.length > 0">
+                    <Pagination :links="users.links" />
                 </div>
             </div>
         </div>

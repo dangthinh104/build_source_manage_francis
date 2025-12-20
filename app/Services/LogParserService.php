@@ -102,77 +102,163 @@ class LogParserService
      * @param int $page Page number (1-indexed)
      * @return array Parsed logs with pagination info
      */
+    /**
+     * Read log file with pagination (newest entries first)
+     *
+     * @param string $filePath Path to log file
+     * @param int $limit Number of lines per page
+     * @param int $page Page number (1-indexed)
+     * @return array Parsed logs with pagination info
+     */
     public function readLogFile(string $filePath, int $limit = 200, int $page = 1): array
     {
         if (!file_exists($filePath)) {
             return [
-                'logs' => [],
-                'pagination' => [
-                    'current_page' => 1,
-                    'per_page' => $limit,
-                    'total_lines' => 0,
-                    'total_pages' => 0,
-                ],
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $limit,
+                'total' => 0,
+                'prev_page_url' => null,
+                'next_page_url' => null,
                 'file_size' => 0,
+                'links' => [],
             ];
         }
 
         $isErrorFile = stripos(basename($filePath), 'error') !== false;
         $fileSize = filesize($filePath);
 
-        // Use SplFileObject for efficient file reading
-        $file = new SplFileObject($filePath, 'r');
-        $file->setFlags(SplFileObject::DROP_NEW_LINE | SplFileObject::SKIP_EMPTY);
+        // Count total lines using a generator or efficient method
+        $totalLines = 0;
+        $handle = fopen($filePath, "r");
+        while(!feof($handle)){
+            $line = fgets($handle);
+            if($line !== false) $totalLines++;
+        }
+        fclose($handle);
 
-        // Count total lines
-        $file->seek(PHP_INT_MAX);
-        $totalLines = $file->key();
-        $file->rewind();
-
-        $totalPages = max(1, ceil($totalLines / $limit));
+        // Calculate pagination parameters
+        $totalPages = max(1, (int) ceil($totalLines / $limit));
         $page = max(1, min($page, $totalPages));
 
-        // Calculate offset for reading (showing newest first)
+        // Calculate line range
+        // We want to show "newest" first if viewing logs generally implies tailing
+        // But the previous implementation did "reverse to show newest first"
+        // Let's stick to standard reading but mapping "Page 1" to "Last N lines"
+        
         $offset = max(0, $totalLines - ($page * $limit));
-        $endLine = $totalLines - (($page - 1) * $limit);
-
-        $logs = [];
-        $lineNumber = 0;
-
-        foreach ($file as $line) {
-            $lineNumber++;
-            
-            // Skip lines before our range
-            if ($lineNumber <= $offset) {
-                continue;
-            }
-            
-            // Stop if we've read enough
-            if ($lineNumber > $endLine) {
-                break;
-            }
-
-            $parsed = $this->parseLogLine($line, $isErrorFile);
-            $parsed['line_number'] = $lineNumber;
-            $logs[] = $parsed;
+        $linesToRead = $limit;
+        
+        // Adjust if we are on the very last page (which corresponds to the top of the file)
+        if ($offset == 0) {
+             $linesToRead = $totalLines - (($page - 1) * $limit);
         }
 
-        // Reverse to show newest first
+        // However, standard Laravel pagination usually implies:
+        // Page 1: Items 1-10
+        // But for LOGS, user expects Page 1 to be the LATEST logs.
+        // So User's "Page 1" = File Lines [Total-Limit .. Total]
+        // User's "Page 2" = File Lines [Total-2*Limit .. Total-Limit]
+        
+        // This math is:
+        // Start Reading at: max(0, TotalLines - (Page * Limit))
+        // Number of lines: Limit (or less if at start of file)
+        
+        $startLine = max(0, $totalLines - ($page * $limit)); // 0-indexed line number
+        // If startLine is 0, we read up to ($limit) lines or until ($totalLines - ($page-1)*$limit)
+        
+        // Wait, let's simplify.
+        // File Content: [Line 1, Line 2, ... Line 100]
+        // Limit: 10
+        // Page 1 (Newest): Should show Lines 91-100
+        // Page 2: Lines 81-90
+        // ...
+        // Page 10: Lines 1-10
+        
+        // Logic:
+        // $startLine = $totalLines - ($page * $limit);
+        // if $startLine < 0, it means we are asking for more than exists at the top.
+        // Real Start = max(0, $totalLines - ($page * $limit))
+        // Lines to read = $limit.
+        // But if real start was clamped to 0, we only read ($totalLines % $limit) or similar.
+        // Actually, we can just read $limit lines starting from $startLine.
+        // If $page * $limit > $totalLines + $limit (way out of bounds), empty.
+        
+        $file = new SplFileObject($filePath, 'r');
+        $file->seek($startLine); // Seek to the determined start line
+        
+        $logs = [];
+        $count = 0;
+        
+        // Read lines
+        while (!$file->eof() && $count < $limit) {
+            $line = $file->current();
+            if (trim($line) !== '') {
+                 $parsed = $this->parseLogLine($line, $isErrorFile);
+                 $parsed['line_number'] = $startLine + $count + 1;
+                 $logs[] = $parsed;
+            }
+            $file->next();
+            $count++;
+        }
+
+        // Reverse to show newest at top of the page list
         $logs = array_reverse($logs);
 
+        // Generate URL helpers (mocking Laravel Pagination)
+        $buildUrl = function($p) { return "?page={$p}"; };
+        
+        $links = $this->generateLinks($page, $totalPages, $buildUrl);
+
         return [
-            'logs' => $logs,
-            'pagination' => [
-                'current_page' => $page,
-                'per_page' => $limit,
-                'total_lines' => $totalLines,
-                'total_pages' => $totalPages,
-                'has_more' => $page < $totalPages,
-                'has_previous' => $page > 1,
-            ],
+            'data' => $logs,
+            'current_page' => $page,
+            'last_page' => $totalPages,
+            'per_page' => $limit,
+            'total' => $totalLines,
+            'prev_page_url' => $page > 1 ? $buildUrl($page - 1) : null,
+            'next_page_url' => $page < $totalPages ? $buildUrl($page + 1) : null,
+            'links' => $links,
             'file_size' => $fileSize,
-            'file_size_formatted' => $this->formatFileSize($fileSize),
         ];
+    }
+
+    /**
+     * Generate pagination links array similar to Laravel's
+     */
+    private function generateLinks(int $page, int $totalPages, callable $urlGenerator): array
+    {
+        $links = [];
+        
+        // Previous
+        $links[] = [
+            'url' => $page > 1 ? $urlGenerator($page - 1) : null,
+            'label' => '&laquo; Previous',
+            'active' => false,
+        ];
+
+        // Pages
+        for ($i = 1; $i <= $totalPages; $i++) {
+            if ($i == 1 || $i == $totalPages || ($i >= $page - 2 && $i <= $page + 2)) {
+                 $links[] = [
+                    'url' => $urlGenerator($i),
+                    'label' => (string)$i,
+                    'active' => $i == $page,
+                 ];
+            } elseif (count($links) > 0 && $links[count($links)-1]['label'] !== '...') {
+                 $links[] = ['url' => null, 'label' => '...', 'active' => false];
+            }
+        }
+
+        // Next
+        $links[] = [
+            'url' => $page < $totalPages ? $urlGenerator($page + 1) : null,
+            'label' => 'Next &raquo;',
+            'active' => false,
+        ];
+        
+        return $links;
     }
 
     /**
@@ -189,13 +275,14 @@ class LogParserService
     {
         if (!file_exists($filePath)) {
             return [
-                'logs' => [],
-                'pagination' => [
-                    'current_page' => 1,
-                    'per_page' => $limit,
-                    'total_entries' => 0,
-                    'total_pages' => 0,
-                ],
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $limit,
+                'total' => 0,
+                'prev_page_url' => null,
+                'next_page_url' => null,
+                'links' => [],
                 'file_size' => 0,
             ];
         }
@@ -280,23 +367,31 @@ class LogParserService
 
         // Calculate pagination
         $totalEntries = count($entries);
-        $totalPages = max(1, ceil($totalEntries / $limit));
+        $totalPages = max(1, (int) ceil($totalEntries / $limit));
         $page = max(1, min($page, $totalPages));
         $offset = ($page - 1) * $limit;
 
         // Slice for current page
         $pagedEntries = array_slice($entries, $offset, $limit);
 
+        // Build URL generator
+        $buildUrl = function($p) use ($query) { 
+            $url = "?page={$p}";
+            if ($query) {
+                $url .= "&query=" . urlencode($query);
+            }
+            return $url;
+        };
+
         return [
-            'logs' => $pagedEntries,
-            'pagination' => [
-                'current_page' => $page,
-                'per_page' => $limit,
-                'total_entries' => $totalEntries,
-                'total_pages' => $totalPages,
-                'has_more' => $page < $totalPages,
-                'has_previous' => $page > 1,
-            ],
+            'data' => $pagedEntries,
+            'current_page' => $page,
+            'last_page' => $totalPages,
+            'per_page' => $limit,
+            'total' => $totalEntries,
+            'prev_page_url' => $page > 1 ? $buildUrl($page - 1) : null,
+            'next_page_url' => $page < $totalPages ? $buildUrl($page + 1) : null,
+            'links' => $this->generateLinks($page, $totalPages, $buildUrl),
             'file_size' => $fileSize,
             'file_size_formatted' => $this->formatFileSize($fileSize),
         ];

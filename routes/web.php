@@ -84,6 +84,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/{subfolder?}', [LogPM2Controller::class, 'index'])->name('index');
     });
 
+    // Documentation Route - Accessible to all authenticated users
+    Route::get('/docs', [\App\Http\Controllers\DocumentationController::class, 'index'])
+        ->middleware(['auth', 'verified'])
+        ->name('docs.index');
+
+    // Force Password Change Routes - Accessible to all authenticated users
+    Route::get('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'show'])->name('password.change');
+    Route::post('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'update'])->name('password.change.store');
+
     /*
     |--------------------------------------------------------------------------
     | Admin Routes (Admin + Super Admin)
@@ -96,14 +105,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
         Route::put('password', [PasswordController::class, 'update'])->name('password.update');
 
-    // Documentation Route
-    Route::get('/docs', [\App\Http\Controllers\DocumentationController::class, 'index'])
-        ->middleware(['auth', 'verified'])
-        ->name('docs.index');
 
-    // Force Password Change Routes
-    Route::get('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'show'])->name('password.change');
-    Route::post('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'update']);
 
     // Admin Reset Password Route
     Route::post('/users/{user}/reset-password', [\App\Http\Controllers\UserController::class, 'resetPassword'])->name('users.reset-password');

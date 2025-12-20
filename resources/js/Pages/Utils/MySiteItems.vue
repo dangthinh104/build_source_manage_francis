@@ -326,7 +326,7 @@ const performDeleteSite = async () => {
         </header>
 
         <!-- Only show Add Site form for users with manage_mysites permission -->
-        <form v-if="can.manage_mysites || isSuperAdmin" @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
+        <form v-if="isSuperAdmin" @submit.prevent="addNewSite()" class="rounded-3xl bg-white/95 p-6 shadow-xl ring-1 ring-slate-100 space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="site_name" class="block text-sm font-medium text-slate-700">Site name</label>

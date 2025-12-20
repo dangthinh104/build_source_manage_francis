@@ -71,13 +71,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         Environment Variables
-                        <span class="ml-auto text-sm font-normal text-slate-600">{{ envVariables.length }} variables</span>
+                        <span class="ml-auto text-sm font-normal text-slate-600">{{ envVariables.data.length }} variables</span>
                     </h2>
                 </div>
                 <!-- Mobile Card View -->
                 <div class="block md:hidden divide-y divide-slate-100">
                     <div 
-                        v-for="variable in envVariables" 
+                        v-for="variable in envVariables.data" 
                         :key="'mobile-' + variable.id"
                         class="p-4 space-y-3"
                     >
@@ -110,7 +110,7 @@
                             </button>
                         </div>
                     </div>
-                    <div v-if="envVariables.length === 0" class="p-8 text-center">
+                    <div v-if="envVariables.data.length === 0" class="p-8 text-center">
                         <svg class="h-12 w-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -123,13 +123,21 @@
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-slate-50">
                             <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Variable Name</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    Variable Name
+                                    <input
+                                        v-model="searchParams.variable_name"
+                                        type="text"
+                                        placeholder="Filter Name..."
+                                        class="mt-2 w-full px-2 py-1 text-xs border border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary font-normal"
+                                    />
+                                </th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Value</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-slate-100">
-                            <tr v-for="variable in envVariables" :key="variable.id" class="hover:bg-slate-50 transition-colors duration-150">
+                            <tr v-for="variable in envVariables.data" :key="variable.id" class="hover:bg-slate-50 transition-colors duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="h-8 w-8 shrink-0 rounded-lg bg-indigo-100 flex items-center justify-center mr-3">
@@ -166,7 +174,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="envVariables.length === 0">
+                            <tr v-if="envVariables.data.length === 0">
                                 <td colspan="3" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-slate-500">
                                         <svg class="h-12 w-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,6 +187,10 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50" v-if="envVariables.links && envVariables.links.length > 0">
+                    <Pagination :links="envVariables.links" />
                 </div>
             </div>
 
@@ -194,7 +206,9 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import Pagination from '@/Components/Pagination.vue';
+import { reactive, ref, watch } from 'vue';
+import debounce from 'lodash/debounce';
 import axios from 'axios';
 import {Head, usePage, router} from '@inertiajs/vue3';
 import EditModal from './EditModal.vue';
@@ -207,8 +221,21 @@ import { toast } from 'vue3-toastify';
 const { confirm } = useConfirm();
 
 const props = defineProps({
-    envVariables: Array,
+    envVariables: Object,
+    filters: Object,
 });
+
+const searchParams = reactive({
+    variable_name: props.filters?.variable_name || '',
+});
+
+watch(searchParams, debounce((value) => {
+    router.get(route('envVariables.index'), value, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true
+    });
+}, 300));
 
 // Safely access the flash messages
 const page = usePage();

@@ -20,7 +20,7 @@ class ForcePasswordChange
         if ($user && $user->must_change_password) {
             // Allow access to the password change route and logout route
             // Adjust the route names as per your implementation
-            if ($request->routeIs('password.change') || $request->routeIs('password.update') || $request->routeIs('logout')) {
+            if ($request->routeIs('password.change') || $request->routeIs('password.change.store') || $request->routeIs('password.update') || $request->routeIs('logout')) {
                 return $next($request);
             }
 

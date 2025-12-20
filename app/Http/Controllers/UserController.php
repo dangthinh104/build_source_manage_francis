@@ -24,11 +24,25 @@ class UserController extends Controller
     //=====================================================
     // GROUP METHOD SHOW
     //=====================================================
-    public function index()
+    public function index(Request $request)
     {
-        $users = User ::all();
-        return Inertia ::render('Users/Index', [
+        $query = User::query();
+
+        if ($request->has('name')) {
+            $query->where('name', 'like', '%' . $request->input('name') . '%');
+        }
+
+        if ($request->has('email')) {
+            $query->where('email', 'like', '%' . $request->input('email') . '%');
+        }
+
+        $users = $query->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return Inertia::render('Users/Index', [
             'users' => $users,
+            'filters' => $request->only(['name', 'email']),
             'can_manage_users' => auth()->user()->isSuperAdmin(),
         ]);
     }

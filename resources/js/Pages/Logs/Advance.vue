@@ -1,5 +1,6 @@
 
 <script setup>
+import Pagination from '@/Components/Pagination.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
@@ -7,10 +8,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 const props = defineProps({
     filename: String,
     subfolder: String,
-    logs: Array,
-    pagination: Object,
-    fileSize: Number,
-    fileSizeFormatted: String,
+    logData: Object, // Contains data, links, file_size
     availableFiles: Array,
     currentQuery: String,
 });
@@ -34,12 +32,12 @@ const levelFilters = ref({
 const isErrorFile = computed(() => props.filename?.toLowerCase().includes('error'));
 
 const filteredLogs = computed(() => {
-    return (props.logs || []).filter(log => levelFilters.value[log.level]);
+    return (props.logData.data || []).filter(log => levelFilters.value[log.level]);
 });
 
 const levelCounts = computed(() => {
     const counts = { ERROR: 0, HTTP_ERROR: 0, HTTP: 0, WARNING: 0, DEBUG: 0, INFO: 0 };
-    (props.logs || []).forEach(log => {
+    (props.logData.data || []).forEach(log => {
         if (counts[log.level] !== undefined) {
             counts[log.level]++;
         }
@@ -83,13 +81,8 @@ const toggleRow = (lineNumber) => {
 const isExpanded = (lineNumber) => expandedRows.value.has(lineNumber);
 
 const goToPage = (page) => {
-    router.get(route('logs.advance', { 
-        subfolder: props.subfolder, 
-        filename: props.filename 
-    }), { 
-        page,
-        query: searchQuery.value || undefined,
-    }, { preserveState: true });
+    // Deprecated with Pagination component, but if needed for custom actions
+    // Pagination component uses Links which visit URL directly
 };
 
 const executeSearch = () => {
@@ -109,7 +102,7 @@ const switchFile = (newFilename) => {
 };
 
 const refresh = () => {
-    router.reload({ only: ['logs', 'pagination'] });
+    router.reload({ only: ['logData'] });
 };
 
 const toggleAutoRefresh = () => {
@@ -278,7 +271,7 @@ onUnmounted(() => {
                         <span class="opacity-70">({{ levelCounts[level] }})</span>
                     </button>
                     <span class="ml-auto text-xs text-slate-500">
-                        {{ fileSizeFormatted }} • {{ pagination?.total_entries || 0 }} entries
+                        {{ logData.file_size_formatted }} • {{ logData.total || 0 }} entries
                     </span>
                 </div>
             </div>
@@ -363,37 +356,8 @@ onUnmounted(() => {
             </div>
 
             <!-- Pagination -->
-            <div v-if="pagination && pagination.total_pages > 1" class="bg-white rounded-2xl shadow-lg px-6 py-4 border border-slate-100">
-                <div class="flex items-center justify-between">
-                    <p class="text-sm text-slate-600">
-                        Page {{ pagination.current_page }} of {{ pagination.total_pages }}
-                        <span class="text-slate-400 ml-2">({{ pagination.total_entries }} total entries)</span>
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <button
-                            :disabled="!pagination.has_previous"
-                            @click="goToPage(pagination.current_page - 1)"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            :class="pagination.has_previous ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-slate-50 text-slate-400'"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                            </svg>
-                            Previous
-                        </button>
-                        <button
-                            :disabled="!pagination.has_more"
-                            @click="goToPage(pagination.current_page + 1)"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            :class="pagination.has_more ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-slate-50 text-slate-400'"
-                        >
-                            Next
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+            <div v-if="logData.links && logData.links.length > 3" class="bg-white rounded-2xl shadow-lg px-6 py-4 border border-slate-100">
+                <Pagination :links="logData.links" />
             </div>
         </div>
 

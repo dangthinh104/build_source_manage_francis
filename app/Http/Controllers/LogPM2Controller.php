@@ -118,25 +118,26 @@ class LogPM2Controller extends Controller
     }
 
     /**
-     * Raw Log Viewer - displays file content as-is
+     * Raw Log Viewer - displays file content with pagination
      */
     public function raw(Request $request, $subfolder, $filename)
     {
         $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
 
         if (!File::exists($filePath)) {
-            abort(404, "File not found");
+            abort(404, "File not found: $filename");
         }
 
-        $content = File::get($filePath);
-        $fileSize = filesize($filePath);
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = max(50, (int) $request->query('limit', 200));
+
+        // Use the paginated reader
+        $result = $this->logParser->readLogFile($filePath, $limit, $page);
 
         return Inertia::render('Logs/Raw', [
             'filename' => $filename,
             'subfolder' => $subfolder,
-            'content' => $content,
-            'fileSize' => $fileSize,
-            'fileSizeFormatted' => $this->formatFileSize($fileSize),
+            'logData' => $result, // Pass the entire result (data, links, meta)
         ]);
     }
 
@@ -169,10 +170,7 @@ class LogPM2Controller extends Controller
         return Inertia::render('Logs/Advance', [
             'filename' => $filename,
             'subfolder' => $subfolder,
-            'logs' => $result['logs'],
-            'pagination' => $result['pagination'],
-            'fileSize' => $result['file_size'],
-            'fileSizeFormatted' => $result['file_size_formatted'],
+            'logData' => $result, // Contains data, links, meta
             'availableFiles' => $availableFiles,
             'currentQuery' => $query,
         ]);

@@ -34,11 +34,19 @@ class EnvVariableController extends Controller
     /**
      * Display list of environment variables.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->checkAdminAccess();
 
-        $envVariables = EnvVariable::all()->map(function ($variable) {
+        $query = EnvVariable::query();
+
+        if ($request->has('variable_name')) {
+            $query->where('variable_name', 'like', '%' . $request->input('variable_name') . '%');
+        }
+
+        $envVariables = $query->paginate(10)->withQueryString();
+        
+        $envVariables->through(function ($variable) {
             return [
                 'id' => $variable->id,
                 'variable_name' => $variable->variable_name,
@@ -48,6 +56,7 @@ class EnvVariableController extends Controller
 
         return Inertia::render('EnvVariables/Index', [
             'envVariables' => $envVariables,
+            'filters' => $request->only(['variable_name']),
         ]);
     }
 

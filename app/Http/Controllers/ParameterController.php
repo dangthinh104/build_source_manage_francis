@@ -15,12 +15,19 @@ class ParameterController extends Controller
             abort(403, 'Unauthorized');
         }
     }
-    public function index()
+    public function index(Request $request)
     {
-        $parameters = Parameter::query()
+        $query = Parameter::query();
+
+        if ($request->has('key')) {
+            $query->where('key', 'like', '%' . $request->input('key') . '%');
+        }
+
+        $parameters = $query
             ->orderBy('key')
-            ->get()
-            ->map(function ($p) {
+            ->paginate(10)
+            ->withQueryString()
+            ->through(function ($p) {
                 return [
                     'id' => $p->id,
                     'key' => $p->key,
@@ -32,6 +39,7 @@ class ParameterController extends Controller
 
         return \Inertia\Inertia::render('Parameters/Index', [
             'parameters' => $parameters,
+            'filters' => $request->only(['key']),
         ]);
     }
 

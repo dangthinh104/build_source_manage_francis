@@ -23,6 +23,7 @@
         "@codemirror/state": "^6.5.2",
         "@codemirror/view": "^6.38.8",
         "chart.js": "^4.5.1",
+        "lodash": "^4.17.21",
         "vue-chartjs": "^5.3.3",
         "vue-codemirror": "^6.1.1",
         "vue3-toastify": "^0.2.8"

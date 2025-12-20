@@ -1,5 +1,6 @@
 
 <script setup>
+import Pagination from '@/Components/Pagination.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -7,9 +8,7 @@ import { ref, computed } from 'vue';
 const props = defineProps({
     filename: String,
     subfolder: String,
-    content: String,
-    fileSize: Number,
-    fileSizeFormatted: String,
+    logData: Object, // Contains data, links, file_size
 });
 
 // State
@@ -67,7 +66,7 @@ const downloadLog = () => {
                             </div>
                             <div>
                                 <h1 class="text-lg font-semibold text-slate-900 font-mono">{{ filename }}</h1>
-                                <p class="text-xs text-slate-500">{{ fileSizeFormatted }} • {{ content?.length || 0 }} characters</p>
+                                <p class="text-xs text-slate-500">{{ logData.file_size }} bytes • {{ logData.total }} lines</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
@@ -137,7 +136,12 @@ const downloadLog = () => {
                             isExpanded ? 'max-h-[80vh]' : 'max-h-96',
                             isErrorFile ? 'text-rose-400' : 'text-green-400'
                         ]"
-                    >{{ content }}</pre>
+                    ><div v-for="(line, index) in logData.data" :key="index"><span class="select-none opacity-30 w-8 inline-block text-right mr-4">{{ line.line_number }}</span>{{ line.raw }}</div></pre>
+                </div>
+
+                 <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50" v-if="logData.links && logData.links.length > 3">
+                    <Pagination :links="logData.links" />
                 </div>
             </div>
         </div>
@@ -185,7 +189,10 @@ const downloadLog = () => {
                     <pre 
                         class="font-mono whitespace-pre-wrap break-words text-sm"
                         :class="isErrorFile ? 'text-rose-400' : 'text-green-400'"
-                    >{{ content }}</pre>
+                    ><div v-for="(line, index) in logData.data" :key="index"><span class="select-none opacity-30 w-8 inline-block text-right mr-4">{{ line.line_number }}</span>{{ line.raw }}</div></pre>
+                    <div class="px-6 py-4 border-t border-gray-700 bg-gray-800" v-if="logData.links && logData.links.length > 3">
+                        <Pagination :links="logData.links" class="text-gray-300" />
+                    </div>
                 </div>
             </div>
         </Teleport>

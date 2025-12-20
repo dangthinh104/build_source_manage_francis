@@ -82,7 +82,15 @@
           <table class="w-full divide-y divide-slate-200 table-fixed">
             <thead class="bg-gradient-to-r from-slate-50 to-slate-100">
               <tr>
-                <th class="w-48 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Key</th>
+                <th class="w-48 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Key
+                    <input
+                        v-model="searchParams.key"
+                        type="text"
+                        placeholder="Filter Key..."
+                        class="mt-2 w-full px-2 py-1 text-xs border border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary font-normal"
+                    />
+                </th>
                 <th class="w-64 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Value</th>
                 <th class="w-24 px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type</th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Description</th>
@@ -141,6 +149,10 @@
             </tbody>
           </table>
         </div>
+        <!-- Pagination -->
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50" v-if="props.parameters.links && props.parameters.links.length > 0">
+            <Pagination :links="props.parameters.links" />
+        </div>
       </div>
     </div>
 
@@ -150,9 +162,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import Pagination from '@/Components/Pagination.vue';
+import { ref, watch, reactive } from 'vue';
+import debounce from 'lodash/debounce';
 import axios from 'axios';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import EditModal from './EditModal.vue';
 import { useConfirm } from '@/Composables/useConfirm';
@@ -161,13 +175,30 @@ import { toast } from 'vue3-toastify';
 const { confirm } = useConfirm();
 
 const props = defineProps({
-  parameters: Array,
+  parameters: Object,
+  filters: Object,
 });
+
+const searchParams = reactive({
+    key: props.filters?.key || '',
+});
+
+watch(searchParams, debounce((value) => {
+    router.get(route('parameters.index'), value, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true
+    });
+}, 300));
 
 const page = usePage();
 const flash = page.props?.flash || {};
 
-const parameters = ref(props.parameters || []);
+const parameters = ref(props.parameters.data || []);
+
+watch(() => props.parameters, (newVal) => {
+    parameters.value = newVal.data || [];
+});
 
 const isModalOpen = ref(false);
 const modalMode = ref('edit'); // 'edit' or 'create'
