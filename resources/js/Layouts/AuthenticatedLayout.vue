@@ -287,7 +287,7 @@ const closeMobileSidebar = () => {
                             v-if="!desktopSidebarCollapsed"
                             class="font-semibold tracking-wide uppercase text-sm text-slate-100"
                         >
-                            Francis Manage
+<span></span>
                         </span>
                                 </Link>
 
@@ -354,7 +354,7 @@ const closeMobileSidebar = () => {
                         <div class="flex items-center gap-3">
                             <ApplicationLogo class="h-10 w-auto text-white" />
                             <span class="font-semibold tracking-wide uppercase text-sm text-slate-100">
-                                Francis Manage
+
                             </span>
                         </div>
                         <button
@@ -462,7 +462,7 @@ const closeMobileSidebar = () => {
                 </div>
         </div>
     </div>
-    
+
     <!-- Global Confirm Modal Provider -->
     <ConfirmProvider />
 </template>
