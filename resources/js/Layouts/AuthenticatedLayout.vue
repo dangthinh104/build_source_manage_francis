@@ -211,14 +211,19 @@ const navItems = computed(() => {
             return true;
         }
 
-        // Check permission-based visibility
+        // Super Admin sees EVERYTHING (has wildcard '*' permission)
+        if (isSuperAdmin.value) {
+            return true;
+        }
+
+        // Check permission-based visibility for other roles
         if (item.permission) {
             return can.value[item.permission] === true;
         }
 
         // Legacy fallback for backward compatibility
         if (item.superAdminOnly) {
-            return isSuperAdmin.value;
+            return false; // Only super_admin gets here, already handled above
         }
         if (item.adminOnly) {
             return isAdmin.value;

@@ -28,18 +28,22 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // Admin permissions
+        // NOTE: Admin can manage sites (edit/build) but NOT delete
+        // Parameters are super_admin only
         $adminPermissions = [
             'view_mysites',
             'manage_mysites',
             'create_mysites',
-            'delete_mysites',
+            // 'delete_mysites', // REMOVED - Only super_admin can delete sites
             'build_mysites',
             'view_env_variables',
             'manage_env_variables',
-            'view_parameters',
-            'manage_parameters',
+            // 'view_parameters', // REMOVED - Super admin only
+            // 'manage_parameters', // REMOVED - Super admin only
             'view_build_history',
             'view_logs',
+            'view_users',       // Admin can view users
+            'manage_users',     // Admin can manage users (with restrictions in controller)
         ];
 
         foreach ($adminPermissions as $permission) {

@@ -65,11 +65,13 @@ Route::middleware('auth')->group(function () {
         ->name('users.reset_2fa')
         ->middleware(RoleMiddleware::class . ':admin');
 
-    // Environment Variables
-    Route::get('/envVariables', [EnvVariableController::class, 'index'])->name('envVariables.index');
-    Route::post('/envVariables', [EnvVariableController::class, 'store'])->name('envVariables.store');
-    Route::put('/envVariables/{id}', [EnvVariableController::class, 'update'])->name('envVariables.update');
-    Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
+    // Environment Variables (Admin and Super Admin only)
+    Route::middleware(RoleMiddleware::class . ':admin')->group(function () {
+        Route::get('/envVariables', [EnvVariableController::class, 'index'])->name('envVariables.index');
+        Route::post('/envVariables', [EnvVariableController::class, 'store'])->name('envVariables.store');
+        Route::put('/envVariables/{id}', [EnvVariableController::class, 'update'])->name('envVariables.update');
+        Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
+    });
 
     // Profile Management
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

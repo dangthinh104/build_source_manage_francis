@@ -1,16 +1,28 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\EnvVariable;
-use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
+/**
+ * Controller for managing environment variables.
+ * 
+ * Security: Route-level middleware ensures only Admin/Super Admin can access.
+ * Data is encrypted using encryptValue/decryptValue helpers from MyHelper.php.
+ */
 class EnvVariableController extends Controller
 {
     /**
      * Check if current user has admin privileges.
      * Aborts with 403 if not authorized.
+     * 
+     * Note: This is defense-in-depth. Routes are also protected by RoleMiddleware.
      */
     private function checkAdminAccess(): void
     {
@@ -19,7 +31,10 @@ class EnvVariableController extends Controller
         }
     }
 
-    public function index()
+    /**
+     * Display list of environment variables.
+     */
+    public function index(): Response
     {
         $this->checkAdminAccess();
 
@@ -27,30 +42,30 @@ class EnvVariableController extends Controller
             return [
                 'id' => $variable->id,
                 'variable_name' => $variable->variable_name,
-                'variable_value' =>decryptValue($variable->variable_value),
+                'variable_value' => decryptValue($variable->variable_value),
             ];
         });
 
-        // Render the Inertia view and pass the environment variables data
         return Inertia::render('EnvVariables/Index', [
             'envVariables' => $envVariables,
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Store a new environment variable.
+     */
+    public function store(Request $request): JsonResponse
     {
         $this->checkAdminAccess();
 
-        $request->validate([
-            'variable_name' => 'required|string|max:255',
+        $validated = $request->validate([
+            'variable_name' => 'required|string|max:255|unique:env_variables,variable_name',
             'variable_value' => 'required|string',
         ]);
 
-        $encryptedValue = encryptValue($request->input('variable_value'));
-
         $data = EnvVariable::create([
-            'variable_name' => $request->input('variable_name'),
-            'variable_value' => $encryptedValue,
+            'variable_name' => $validated['variable_name'],
+            'variable_value' => encryptValue($validated['variable_value']),
         ]);
 
         return response()->json([
@@ -60,20 +75,21 @@ class EnvVariableController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Update an existing environment variable.
+     */
+    public function update(Request $request, int $id): JsonResponse
     {
         $this->checkAdminAccess();
 
         $envVariable = EnvVariable::findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'variable_value' => 'required|string',
         ]);
 
-        $encryptedValue = encryptValue($request->input('variable_value'));
-
         $envVariable->update([
-            'variable_value' => $encryptedValue,
+            'variable_value' => encryptValue($validated['variable_value']),
         ]);
 
         return response()->json([
@@ -83,7 +99,10 @@ class EnvVariableController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * Delete an environment variable.
+     */
+    public function destroy(int $id): JsonResponse
     {
         $this->checkAdminAccess();
 

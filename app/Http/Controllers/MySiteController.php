@@ -71,11 +71,11 @@ class MySiteController extends Controller
 
     public function update(Request $request)
     {
-        // Only super_admin can edit sites
-        if (!auth()->user() || !auth()->user()->isSuperAdmin()) {
+        // Admin and Super Admin can edit sites
+        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
             return response()->json([
                 'status' => false,
-                'message' => 'Only Super Admin can edit sites.'
+                'message' => 'You do not have permission to edit sites.'
             ], 403);
         }
 
