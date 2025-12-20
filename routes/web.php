@@ -96,6 +96,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
         Route::put('password', [PasswordController::class, 'update'])->name('password.update');
 
+    // Documentation Route
+    Route::get('/docs', [\App\Http\Controllers\DocumentationController::class, 'index'])
+        ->middleware(['auth', 'verified'])
+        ->name('docs.index');
+
     // Force Password Change Routes
     Route::get('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'show'])->name('password.change');
     Route::post('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'update']);
