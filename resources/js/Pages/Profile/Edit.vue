@@ -4,7 +4,9 @@ import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import UserPreferencesForm from './Partials/UserPreferencesForm.vue';
-import { Head } from '@inertiajs/vue3';
+import ApiTokenManager from './Partials/ApiTokenManager.vue';
+import { Head, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 defineProps({
     mustVerifyEmail: {
@@ -13,6 +15,12 @@ defineProps({
     status: {
         type: String,
     },
+});
+
+const page = usePage();
+const isAdmin = computed(() => {
+    const role = page.props.auth.user.role;
+    return role === 'admin' || role === 'super_admin';
 });
 </script>
 
@@ -40,6 +48,10 @@ defineProps({
 
                 <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                     <UserPreferencesForm class="max-w-xl" />
+                </div>
+
+                <div v-if="isAdmin" class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                    <ApiTokenManager class="max-w-full" />
                 </div>
 
                 <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">

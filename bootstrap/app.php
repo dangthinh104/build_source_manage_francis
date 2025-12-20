@@ -23,5 +23,25 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->shouldRenderJsonWhen(function (\Illuminate\Http\Request $request, Throwable $e) {
+            if ($request->is('api/*')) {
+                return true;
+            }
+            return $request->expectsJson();
+        });
+
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                \Illuminate\Support\Facades\Log::warning('Method not allowed: ' . $e->getMessage(), [
+                    'url' => $request->fullUrl(),
+                    'method' => $request->method(),
+                    'ip' => $request->ip()
+                ]);
+
+                return response()->json([
+                    'message' => 'Method not allowed.',
+                    'status' => 'error'
+                ], 405);
+            }
+        });
     })->create();

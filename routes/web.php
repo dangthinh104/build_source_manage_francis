@@ -62,6 +62,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/2fa/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
     Route::delete('/profile/2fa', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
 
+    // API Token Management
+    Route::get('/api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('/api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('/api-tokens/{id}', [\App\Http\Controllers\ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+
     // User Preferences - accessible to all authenticated users
     Route::post('/preferences', [UserPreferenceController::class, 'update'])->name('preferences.update');
 
