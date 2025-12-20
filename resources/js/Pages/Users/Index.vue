@@ -193,7 +193,79 @@ const toggleTwoFactor = async (userId, currentStatus) => {
 
             <!-- Users Table Card -->
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="overflow-x-auto">
+                <!-- Mobile Card View -->
+                <div class="block md:hidden divide-y divide-slate-100">
+                    <div 
+                        v-for="user in users" 
+                        :key="'mobile-' + user.id"
+                        class="p-4 space-y-3"
+                    >
+                        <!-- User Info -->
+                        <div class="flex items-center gap-3">
+                            <div class="h-12 w-12 shrink-0 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-lg">
+                                {{ user.name.charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-slate-900 truncate">{{ user.name }}</p>
+                                <p class="text-sm text-slate-500 truncate">{{ user.email }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Role & 2FA Status -->
+                        <div class="flex items-center justify-between">
+                            <span 
+                                class="px-3 py-1 rounded-full text-xs font-medium"
+                                :class="user.role === 'Admin' ? 'bg-primary-50 text-primary' : 'bg-slate-100 text-slate-700'"
+                            >
+                                {{ user.role }}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-500">2FA:</span>
+                                <span 
+                                    class="px-2 py-1 rounded-full text-xs font-medium"
+                                    :class="has2FAEnabled(user) ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'"
+                                >
+                                    {{ has2FAEnabled(user) ? 'On' : 'Off' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex gap-2 pt-2">
+                            <Link
+                                v-if="canManageUser(user)"
+                                :href="route('users.edit', user.id)"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-primary bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors"
+                            >
+                                Edit
+                            </Link>
+                            <button
+                                v-if="canManageUser(user)"
+                                @click="confirmDelete(user.id, user.name)"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-rose-600 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors"
+                            >
+                                Delete
+                            </button>
+                            <button
+                                v-if="isSuperAdmin"
+                                @click="confirmToggleTwoFactor(user.id, user.name, user)"
+                                :disabled="processingTwoFactor[user.id]"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                            >
+                                {{ has2FAEnabled(user) ? 'Disable 2FA' : 'Enable 2FA' }}
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="users.length === 0" class="p-8 text-center">
+                        <svg class="h-12 w-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <p class="text-sm text-slate-500">No users found</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Table View -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-gradient-to-r from-slate-50 to-slate-100">
                             <tr>
@@ -213,22 +285,8 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                         Email
                                     </div>
                                 </th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                                    <div class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                        </svg>
-                                        Role
-                                    </div>
-                                </th>
-                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                        </svg>
-                                        2FA
-                                    </div>
-                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Role</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">2FA</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -272,9 +330,6 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                             class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
                                             :class="has2FAEnabled(user) ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'"
                                         >
-                                            <svg v-if="has2FAEnabled(user)" class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                            </svg>
                                             {{ has2FAEnabled(user) ? 'Enabled' : 'Disabled' }}
                                         </span>
                                     </div>
@@ -291,16 +346,6 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                             </svg>
                                             <span>Edit</span>
                                         </Link>
-                                        <span
-                                            v-else
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg font-medium cursor-not-allowed"
-                                            title="You cannot edit this user"
-                                        >
-                                            <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                            <span>Edit</span>
-                                        </span>
                                         <button
                                             v-if="canManageUser(user)"
                                             @click="confirmDelete(user.id, user.name)"

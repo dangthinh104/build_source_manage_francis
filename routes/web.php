@@ -9,7 +9,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPreferenceController;
 use App\Http\Controllers\RbacController;
-use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -38,10 +37,10 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
-    // Dashboard
+    // Dashboard - accessible to all authenticated users
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // My Sites Management
+    // My Sites Management - accessible to all authenticated users
     Route::get('/my-sites', [MySiteController::class, 'index'])->name('my_site.index');
     Route::get('/my-sites/{id}', [MySiteController::class, 'show'])->name('my_site.show');
     Route::post('/my-site-store', [MySiteController::class, 'store'])->name('my_site.store');
@@ -55,25 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-site-logs', [MySiteController::class, 'getSiteLogs'])->name('my_site.logs');
     Route::post('/my-site-view-log', [MySiteController::class, 'viewLogFile'])->name('my_site.view_log');
 
-    // User Management
-    Route::resource('users', UserController::class);
-    Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
-    Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
-    Route::post('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
-    Route::post('/users/{id}/toggle-two-factor', [UserController::class, 'toggleTwoFactor'])->name('users.toggle_two_factor');
-    Route::post('/users/{user}/reset-2fa', [UserController::class, 'resetTwoFactor'])
-        ->name('users.reset_2fa')
-        ->middleware(RoleMiddleware::class . ':admin');
-
-    // Environment Variables (Admin and Super Admin only)
-    Route::middleware(RoleMiddleware::class . ':admin')->group(function () {
-        Route::get('/envVariables', [EnvVariableController::class, 'index'])->name('envVariables.index');
-        Route::post('/envVariables', [EnvVariableController::class, 'store'])->name('envVariables.store');
-        Route::put('/envVariables/{id}', [EnvVariableController::class, 'update'])->name('envVariables.update');
-        Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
-    });
-
-    // Profile Management
+    // Profile Management - accessible to all authenticated users
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -81,29 +62,55 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/2fa/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
     Route::delete('/profile/2fa', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
 
-    // User Preferences
+    // User Preferences - accessible to all authenticated users
     Route::post('/preferences', [UserPreferenceController::class, 'update'])->name('preferences.update');
 
-    // Log Viewing - specific routes must come BEFORE the catch-all
+    // Log Viewing - accessible to all authenticated users
     Route::get('/logs/view/{subfolder}/{filename}', [LogPM2Controller::class, 'view'])->name('logs.view');
     Route::get('/logs/download/{subfolder}/{filename}', [LogPM2Controller::class, 'download'])->name('logs.download');
     Route::get('/logs/{subfolder?}', [LogPM2Controller::class, 'index'])->name('logs.index');
 
-    // Super Admin Only Routes
-    Route::resource('parameters', ParameterController::class)
-        ->only(['index', 'store', 'update', 'destroy'])
-        ->middleware(RoleMiddleware::class . ':super_admin');
-    Route::get('/rbac/matrix', [RbacController::class, 'index'])
-        ->name('rbac.matrix')
-        ->middleware(RoleMiddleware::class . ':super_admin');
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Routes (Admin + Super Admin)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:admin')->group(function () {
+        // User Management
+        Route::resource('users', UserController::class);
+        Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::post('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{id}/toggle-two-factor', [UserController::class, 'toggleTwoFactor'])->name('users.toggle_two_factor');
+        Route::post('/users/{user}/reset-2fa', [UserController::class, 'resetTwoFactor'])->name('users.reset_2fa');
 
-    // Queue Manager (Admin and Super Admin)
-    Route::middleware(RoleMiddleware::class . ':admin')->prefix('queues')->name('queues.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\QueueManagerController::class, 'index'])->name('index');
-        Route::post('/retry/{uuid}', [\App\Http\Controllers\QueueManagerController::class, 'retry'])->name('retry');
-        Route::delete('/destroy/{uuid}', [\App\Http\Controllers\QueueManagerController::class, 'destroy'])->name('destroy');
-        Route::post('/retry-all', [\App\Http\Controllers\QueueManagerController::class, 'retryAll'])->name('retry-all');
-        Route::post('/flush', [\App\Http\Controllers\QueueManagerController::class, 'flush'])->name('flush');
+        // Environment Variables
+        Route::get('/envVariables', [EnvVariableController::class, 'index'])->name('envVariables.index');
+        Route::post('/envVariables', [EnvVariableController::class, 'store'])->name('envVariables.store');
+        Route::put('/envVariables/{id}', [EnvVariableController::class, 'update'])->name('envVariables.update');
+        Route::delete('/envVariables/{id}', [EnvVariableController::class, 'destroy'])->name('envVariables.destroy');
+
+        // Queue Manager
+        Route::prefix('queues')->name('queues.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\QueueManagerController::class, 'index'])->name('index');
+            Route::post('/retry/{uuid}', [\App\Http\Controllers\QueueManagerController::class, 'retry'])->name('retry');
+            Route::delete('/destroy/{uuid}', [\App\Http\Controllers\QueueManagerController::class, 'destroy'])->name('destroy');
+            Route::post('/retry-all', [\App\Http\Controllers\QueueManagerController::class, 'retryAll'])->name('retry-all');
+            Route::post('/flush', [\App\Http\Controllers\QueueManagerController::class, 'flush'])->name('flush');
+        });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Super Admin Routes (Super Admin only)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:super_admin')->group(function () {
+        // Parameters
+        Route::resource('parameters', ParameterController::class)->only(['index', 'store', 'update', 'destroy']);
+        
+        // RBAC Matrix
+        Route::get('/rbac/matrix', [RbacController::class, 'index'])->name('rbac.matrix');
     });
 });
 

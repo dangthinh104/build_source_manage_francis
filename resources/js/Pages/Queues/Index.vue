@@ -180,7 +180,34 @@ const refresh = () => {
 
             <!-- Active Jobs Tab -->
             <div v-if="activeTab === 'active'" class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto">
+                <!-- Mobile Card View -->
+                <div class="block md:hidden divide-y divide-slate-100">
+                    <div 
+                        v-for="job in activeJobs" 
+                        :key="'mobile-active-' + job.id"
+                        class="p-4 space-y-2"
+                    >
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono text-slate-500">#{{ job.id }}</span>
+                            <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg">{{ job.queue }}</span>
+                        </div>
+                        <p class="font-medium text-slate-900 text-sm">{{ job.payload.shortName }}</p>
+                        <p class="text-xs text-slate-500 truncate">{{ job.payload.displayName }}</p>
+                        <div class="flex justify-between text-xs text-slate-500 pt-1">
+                            <span>Attempts: {{ job.attempts }}</span>
+                            <span>{{ job.created_at }}</span>
+                        </div>
+                    </div>
+                    <div v-if="activeJobs.length === 0" class="p-8 text-center">
+                        <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <p class="text-sm text-slate-500">No active jobs</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Table View -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-slate-50">
                             <tr>
@@ -242,7 +269,52 @@ const refresh = () => {
                 </div>
 
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div class="overflow-x-auto">
+                    <!-- Mobile Card View -->
+                    <div class="block md:hidden divide-y divide-slate-100">
+                        <div 
+                            v-for="job in failedJobs" 
+                            :key="'mobile-failed-' + job.uuid"
+                            class="p-4 space-y-3"
+                        >
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-mono text-slate-500">{{ job.uuid.substring(0, 8) }}...</span>
+                                <span class="px-2 py-1 text-xs font-medium bg-rose-100 text-rose-700 rounded-lg">{{ job.queue }}</span>
+                            </div>
+                            <p class="font-medium text-slate-900 text-sm">{{ job.payload.shortName }}</p>
+                            <button
+                                @click="showException(job)"
+                                class="text-xs text-slate-500 line-clamp-2 text-left"
+                            >
+                                {{ job.exception }}
+                            </button>
+                            <p class="text-xs text-slate-500">Failed: {{ job.failed_at_human }}</p>
+                            <div class="flex gap-2">
+                                <button
+                                    @click="retryJob(job.uuid)"
+                                    :disabled="loading"
+                                    class="flex-1 py-2.5 text-center text-xs font-semibold text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50"
+                                >
+                                    Retry
+                                </button>
+                                <button
+                                    @click="deleteJob(job.uuid)"
+                                    :disabled="loading"
+                                    class="flex-1 py-2.5 text-center text-xs font-semibold text-rose-600 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors disabled:opacity-50"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="failedJobs.length === 0" class="p-8 text-center">
+                            <svg class="w-12 h-12 mx-auto text-emerald-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm text-emerald-600">No failed jobs!</p>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Table View -->
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-200">
                             <thead class="bg-slate-50">
                                 <tr>

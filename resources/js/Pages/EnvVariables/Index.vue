@@ -74,7 +74,52 @@
                         <span class="ml-auto text-sm font-normal text-slate-600">{{ envVariables.length }} variables</span>
                     </h2>
                 </div>
-                <div class="overflow-x-auto">
+                <!-- Mobile Card View -->
+                <div class="block md:hidden divide-y divide-slate-100">
+                    <div 
+                        v-for="variable in envVariables" 
+                        :key="'mobile-' + variable.id"
+                        class="p-4 space-y-3"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 shrink-0 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-slate-900 font-mono text-sm">{{ variable.variable_name }}</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl">
+                            <p class="text-xs text-slate-500 mb-1">Value</p>
+                            <p class="text-sm text-slate-700 font-mono break-all">{{ variable.variable_value }}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button
+                                @click="editVariable(variable)"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
+                            >
+                                Edit
+                            </button>
+                            <button
+                                @click="deleteVariable(variable.id)"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-rose-600 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="envVariables.length === 0" class="p-8 text-center">
+                        <svg class="h-12 w-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="text-sm text-slate-500">No environment variables</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Table View -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-slate-50">
                             <tr>

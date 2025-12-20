@@ -388,8 +388,96 @@ const performDeleteSite = async () => {
                     Live builds
                 </span>
             </div>
+            <!-- Mobile Card View (visible only on small screens) -->
+            <div class="block md:hidden space-y-4 p-4">
+                <div
+                    v-for="(site, index) in mySite"
+                    :key="'mobile-' + site.id"
+                    class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden"
+                    :class="loadingIndices.includes(index) ? 'opacity-60' : ''"
+                >
+                    <!-- Card Header -->
+                    <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-4 py-3 border-b border-slate-200">
+                        <Link :href="route('my_site.show', site.id)" class="font-semibold text-primary hover:underline">
+                            #{{ site.id }} - {{ site.site_name }}
+                        </Link>
+                        <p class="text-xs text-slate-500 mt-0.5">Port {{ site.port_pm2 || '—' }}</p>
+                    </div>
 
-            <div class="overflow-x-auto">
+                    <!-- Card Body -->
+                    <div class="p-4 space-y-3">
+                        <!-- Status Row -->
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-500">Last Success</span>
+                            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 font-medium">
+                                {{ site.last_build_success_ago || '—' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-500">Last Fail</span>
+                            <span class="text-xs px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 font-medium">
+                                {{ site.last_build_fail_ago || '—' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-500">Last Builder</span>
+                            <span class="text-sm text-slate-700">{{ site.last_builder?.name || '—' }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Actions (full-width buttons for better touch) -->
+                    <div class="border-t border-slate-100 p-3 space-y-2">
+                        <div class="flex gap-2">
+                            <button
+                                @click="onOpenLogDetails(site.id)"
+                                class="flex-1 py-2.5 text-xs font-semibold text-primary border border-primary rounded-xl hover:bg-primary-50 transition-colors"
+                            >
+                                View Log
+                            </button>
+                            <SecondaryButton 
+                                class="flex-1 text-xs py-2.5" 
+                                @click="openSiteDetailDialog(site.id, index)"
+                                :disabled="loadingIndices.includes(index)"
+                            >Details</SecondaryButton>
+                        </div>
+                        <div class="flex gap-2">
+                            <SecondaryButton 
+                                v-if="can.manage_mysites || isSuperAdmin" 
+                                class="flex-1 text-xs py-2.5" 
+                                @click="openEditModal(site.id)"
+                                :disabled="loadingIndices.includes(index)"
+                            >Edit</SecondaryButton>
+                            <Link
+                                v-if="hasAdminPrivileges"
+                                :href="route('logs.index', { subfolder: site.site_name })"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"
+                            >
+                                PM2 Logs
+                            </Link>
+                        </div>
+                        <PrimaryButton
+                            v-if="can.build_mysites || hasAdminPrivileges"
+                            class="w-full py-3 text-sm"
+                            type="button"
+                            :loading="loadingIndices.includes(index)"
+                            :disabled="loadingIndices.includes(index)"
+                            loading-text="Building..."
+                            @click="buildSite(site.id, index)"
+                        >
+                            Build Site
+                        </PrimaryButton>
+                        <SecondaryButton 
+                            v-if="isSuperAdmin" 
+                            class="w-full text-xs py-2.5 text-rose-600 border-rose-200 hover:bg-rose-50" 
+                            @click="confirmDeleteSite(site)"
+                            :disabled="loadingIndices.includes(index)"
+                        >Delete Site</SecondaryButton>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Table View (hidden on mobile) -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full min-w-[720px] text-left text-sm text-slate-600">
                     <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
