@@ -1,43 +1,97 @@
 <template>
-        <div class="fixed z-10 inset-0 overflow-y-auto">
-                <div class="flex items-center justify-center min-h-screen px-4">
-                        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+    <Modal :show="true" @close="$emit('close')" max-width="lg">
+        <form @submit.prevent="submit">
+            <div class="p-6 space-y-5">
+                <!-- Header -->
+                <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">
+                            {{ mode === 'create' ? 'Create Parameter' : 'Edit Parameter' }}
+                        </h2>
+                        <p class="text-sm text-slate-500">
+                            {{ mode === 'create' ? 'Add a new application parameter' : `Editing "${parameter?.key}"` }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Form Fields -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Key</label>
+                        <input 
+                            v-model="form.key" 
+                            type="text" 
+                            class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary disabled:bg-slate-50 disabled:text-slate-500"
+                            :disabled="mode === 'edit'"
+                            placeholder="Enter parameter key"
+                            required 
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Value</label>
+                        <input 
+                            v-model="form.value" 
+                            type="text" 
+                            class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary"
+                            placeholder="Enter parameter value"
+                            required 
+                        />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                            <select 
+                                v-model="form.type" 
+                                class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary"
+                            >
+                                <option value="">Select type</option>
+                                <option value="string">String</option>
+                                <option value="integer">Integer</option>
+                                <option value="boolean">Boolean</option>
+                                <option value="path">Path</option>
+                                <option value="json">JSON</option>
+                            </select>
                         </div>
 
-                        <div class="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full">
-                                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ mode === 'create' ? 'Create Parameter' : 'Edit Parameter' }}</h3>
-                                        <form @submit.prevent="submit">
-                                                <div class="mb-4">
-                                                        <label class="block text-sm font-medium text-gray-700">Key</label>
-                                                        <input v-model="form.key" type="text" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" :disabled="mode==='edit'" required />
-                                                </div>
-                                                <div class="mb-4">
-                                                        <label class="block text-sm font-medium text-gray-700">Value</label>
-                                                        <input v-model="form.value" type="text" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
-                                                </div>
-                                                <div class="mb-4">
-                                                        <label class="block text-sm font-medium text-gray-700">Type</label>
-                                                        <input v-model="form.type" type="text" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="string/integer/boolean/path" />
-                                                </div>
-                                                <div class="mb-4">
-                                                        <label class="block text-sm font-medium text-gray-700">Description</label>
-                                                        <input v-model="form.description" type="text" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-                                                </div>
-                                                <div class="flex justify-end">
-                                                        <button @click="$emit('close')" type="button" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Cancel</button>
-                                                        <button type="submit" class="btn-primary text-white px-4 py-2 rounded">{{ mode === 'create' ? 'Create' : 'Update' }}</button>
-                                                </div>
-                                        </form>
-                                </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <input 
+                                v-model="form.description" 
+                                type="text" 
+                                class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary"
+                                placeholder="Optional description"
+                            />
                         </div>
+                    </div>
                 </div>
-        </div>
+
+                <!-- Actions -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <SecondaryButton type="button" @click="$emit('close')">
+                        Cancel
+                    </SecondaryButton>
+                    <PrimaryButton type="submit">
+                        {{ mode === 'create' ? 'Create Parameter' : 'Update Parameter' }}
+                    </PrimaryButton>
+                </div>
+            </div>
+        </form>
+    </Modal>
 </template>
 
 <script setup>
 import { reactive, watch } from 'vue';
+import Modal from '@/Components/Modal.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 
 const props = defineProps({
     parameter: Object,

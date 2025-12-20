@@ -201,6 +201,10 @@ import EditModal from './EditModal.vue';
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Codemirror } from 'vue-codemirror';
 import { json } from '@codemirror/lang-json';
+import { useConfirm } from '@/Composables/useConfirm';
+import { toast } from 'vue3-toastify';
+
+const { confirm } = useConfirm();
 
 const props = defineProps({
     envVariables: Array,
@@ -256,18 +260,25 @@ const updateVariable = async (updatedVariable) => {
 };
 
 const deleteVariable = async (id) => {
-    if (confirm('Confirm delete env?')) {
-        try {
-            const response = await axios.delete(`/envVariables/${id}`);
-            if (response.data.success) {
-                router.reload({ only: ['envVariables'] });
-            } else {
-                alert('Failed to delete variable: ' + (response.data.message || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error when delete env:', error);
-            alert('Error when deleting variable: ' + (error.response?.data?.message || error.message));
+    const confirmed = await confirm({
+        title: 'Delete Environment Variable?',
+        message: 'Are you sure you want to delete this variable?',
+        confirmText: 'Delete',
+        variant: 'danger',
+    });
+    if (!confirmed) return;
+    
+    try {
+        const response = await axios.delete(`/envVariables/${id}`);
+        if (response.data.success) {
+            toast('Variable deleted', { type: 'success' });
+            router.reload({ only: ['envVariables'] });
+        } else {
+            toast('Failed to delete variable: ' + (response.data.message || 'Unknown error'), { type: 'error' });
         }
+    } catch (error) {
+        console.error('Error when delete env:', error);
+        toast('Error when deleting variable: ' + (error.response?.data?.message || error.message), { type: 'error' });
     }
 };
 </script>

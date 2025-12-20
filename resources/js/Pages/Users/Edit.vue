@@ -71,7 +71,7 @@ const submit = () => {
 
             <!-- Form Card -->
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4">
+                <div class="bg-gradient-to-r from-primary to-primary-500 px-6 py-4">
                     <h2 class="text-lg font-semibold text-white">User Information</h2>
                 </div>
                 
@@ -81,7 +81,7 @@ const submit = () => {
                         <input 
                             v-model="form.name" 
                             type="text" 
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 hover:border-slate-400" 
                         />
                         <InputError :message="form.errors.name" />
                     </div>
@@ -91,7 +91,7 @@ const submit = () => {
                         <input 
                             v-model="form.email" 
                             type="email" 
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 hover:border-slate-400" 
                         />
                         <InputError :message="form.errors.email" />
                     </div>
@@ -100,7 +100,7 @@ const submit = () => {
                         <label class="block text-sm font-semibold text-slate-700 mb-2">User Role</label>
                         <select 
                             v-model="form.role" 
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400"
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 hover:border-slate-400"
                         >
                             <option v-for="role in availableRoles" :key="role.value" :value="role.value">
                                 {{ role.label }}

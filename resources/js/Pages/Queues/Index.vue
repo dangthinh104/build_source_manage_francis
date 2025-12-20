@@ -6,6 +6,9 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Modal from '@/Components/Modal.vue';
 import { toast } from 'vue3-toastify';
+import { useConfirm } from '@/Composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const props = defineProps({
     activeJobs: {
@@ -45,8 +48,14 @@ const retryJob = (uuid) => {
     });
 };
 
-const deleteJob = (uuid) => {
-    if (!confirm('Are you sure you want to delete this failed job?')) return;
+const deleteJob = async (uuid) => {
+    const confirmed = await confirm({
+        title: 'Delete Failed Job?',
+        message: 'Are you sure you want to delete this failed job?',
+        confirmText: 'Delete',
+        variant: 'danger',
+    });
+    if (!confirmed) return;
     
     loading.value = true;
     router.delete(route('queues.destroy', uuid), {
@@ -60,8 +69,14 @@ const deleteJob = (uuid) => {
     });
 };
 
-const retryAll = () => {
-    if (!confirm('Are you sure you want to retry ALL failed jobs?')) return;
+const retryAll = async () => {
+    const confirmed = await confirm({
+        title: 'Retry All Jobs?',
+        message: 'Are you sure you want to retry ALL failed jobs?',
+        confirmText: 'Retry All',
+        variant: 'warning',
+    });
+    if (!confirmed) return;
     
     loading.value = true;
     router.post(route('queues.retry-all'), {}, {
@@ -75,8 +90,14 @@ const retryAll = () => {
     });
 };
 
-const flushAll = () => {
-    if (!confirm('Are you sure you want to DELETE ALL failed jobs? This cannot be undone.')) return;
+const flushAll = async () => {
+    const confirmed = await confirm({
+        title: 'Delete All Failed Jobs?',
+        message: 'Are you sure you want to DELETE ALL failed jobs? This cannot be undone.',
+        confirmText: 'Delete All',
+        variant: 'danger',
+    });
+    if (!confirmed) return;
     
     loading.value = true;
     router.post(route('queues.flush'), {}, {

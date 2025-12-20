@@ -3,6 +3,7 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
+import ConfirmProvider from '@/Components/ConfirmProvider.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { toast } from 'vue3-toastify';
 
@@ -300,7 +301,7 @@ const closeMobileSidebar = () => {
                         v-for="item in navItems"
                         :key="item.key"
                         :href="route(item.routeName)"
-                        class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
+                        class="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
                         :class="[
                             isActive(item)
                                 ? 'nav-active text-white'
@@ -365,7 +366,7 @@ const closeMobileSidebar = () => {
                             v-for="item in navItems"
                             :key="`mobile-${item.key}`"
                             :href="route(item.routeName)"
-                            class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
+                            class="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
                             :class="isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md'"
                             @click="closeMobileSidebar"
                         >
@@ -454,4 +455,7 @@ const closeMobileSidebar = () => {
                 </div>
         </div>
     </div>
+    
+    <!-- Global Confirm Modal Provider -->
+    <ConfirmProvider />
 </template>

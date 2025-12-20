@@ -153,6 +153,10 @@ import axios from 'axios';
 import { Head, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import EditModal from './EditModal.vue';
+import { useConfirm } from '@/Composables/useConfirm';
+import { toast } from 'vue3-toastify';
+
+const { confirm } = useConfirm();
 
 const props = defineProps({
   parameters: Array,
@@ -208,13 +212,21 @@ const handleCreate = async (payload) => {
 };
 
 const remove = async (param) => {
-  if (!confirm('Delete parameter?')) return;
+  const confirmed = await confirm({
+    title: 'Delete Parameter?',
+    message: `Are you sure you want to delete "${param.key}"?`,
+    confirmText: 'Delete',
+    variant: 'danger',
+  });
+  if (!confirmed) return;
+  
   try {
     await axios.delete(`/parameters/${param.id}`);
     parameters.value = parameters.value.filter(p => p.id !== param.id);
+    toast('Parameter deleted', { type: 'success' });
   } catch (e) {
     console.error('Delete failed', e);
-    alert(e.response?.data?.message || 'Delete failed');
+    toast(e.response?.data?.message || 'Delete failed', { type: 'error' });
   }
 };
 </script>
