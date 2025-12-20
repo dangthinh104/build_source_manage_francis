@@ -71,10 +71,10 @@ Route::middleware('auth')->group(function () {
     // User Preferences
     Route::post('/preferences', [UserPreferenceController::class, 'update'])->name('preferences.update');
 
-    // Log Viewing
-    Route::get('/logs/{subfolder?}', [LogPM2Controller::class, 'index'])->name('logs.index');
+    // Log Viewing - specific routes must come BEFORE the catch-all
     Route::get('/logs/view/{subfolder}/{filename}', [LogPM2Controller::class, 'view'])->name('logs.view');
     Route::get('/logs/download/{subfolder}/{filename}', [LogPM2Controller::class, 'download'])->name('logs.download');
+    Route::get('/logs/{subfolder?}', [LogPM2Controller::class, 'index'])->name('logs.index');
 
     // Super Admin Only Routes
     Route::resource('parameters', ParameterController::class)

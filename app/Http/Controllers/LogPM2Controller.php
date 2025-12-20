@@ -32,12 +32,60 @@ class LogPM2Controller extends Controller
             $subfolder = '';
         }
 
-        // Get folders and files in the current directory
-        $folders = array_map('basename', File::directories($directoryPath));
+        // Get folder names
+        $folderNames = array_map('basename', File::directories($directoryPath));
         $files = array_map('basename', File::files($directoryPath));
         
         // Sort folders alphabetically for better UX
-        sort($folders);
+        sort($folderNames);
+
+        // Get site mappings (site_name matches folder name)
+        $sites = \App\Models\MySite::whereIn('site_name', $folderNames)
+            ->get()
+            ->keyBy('site_name');
+
+        // Build detailed folder info
+        $folders = [];
+        foreach ($folderNames as $folderName) {
+            $folderPath = $directoryPath . '/' . $folderName;
+            $folderFiles = File::files($folderPath);
+            
+            $errorFiles = [];
+            $outFiles = [];
+            $latestErrorFile = null;
+            $latestErrorTime = 0;
+            
+            foreach ($folderFiles as $file) {
+                $fileName = $file->getFilename();
+                $modifiedTime = $file->getMTime();
+                
+                if (str_contains($fileName, 'error')) {
+                    $errorFiles[] = $fileName;
+                    if ($modifiedTime > $latestErrorTime) {
+                        $latestErrorTime = $modifiedTime;
+                        $latestErrorFile = $fileName;
+                    }
+                } elseif (str_contains($fileName, 'out')) {
+                    $outFiles[] = $fileName;
+                }
+            }
+            
+            $site = $sites->get($folderName);
+            
+            $folders[] = [
+                'name' => $folderName,
+                'error_count' => count($errorFiles),
+                'out_count' => count($outFiles),
+                'total_files' => count($folderFiles),
+                'latest_error_file' => $latestErrorFile,
+                'latest_error_time' => $latestErrorTime ? date('Y-m-d H:i:s', $latestErrorTime) : null,
+                'site' => $site ? [
+                    'id' => $site->id,
+                    'site_name' => $site->site_name,
+                    'port_pm2' => $site->port_pm2,
+                ] : null,
+            ];
+        }
 
         return Inertia::render('Logs/Index', [
             'folders' => $folders,
