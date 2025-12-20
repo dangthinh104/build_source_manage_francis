@@ -277,19 +277,16 @@ const closeMobileSidebar = () => {
                 :class="desktopSidebarCollapsed ? 'w-20' : 'w-72'"
             >
                 <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
-                <div class="flex items-center justify-between px-5 py-6 border-b border-white/10 relative z-10">
+                <div 
+                    class="flex items-center justify-between px-5 py-6 border-b border-white/10 relative z-10 transition-all duration-300"
+                    :class="desktopSidebarCollapsed ? 'flex-col gap-4 px-2' : 'flex-row'"
+                >
                     <Link
                         :href="isAdmin ? route('dashboard') : route('logs.index')"
-                        class="flex items-center gap-3"
+                        class="flex items-center justify-center gap-3 transition-transform duration-300 hover:scale-105 shrink-0"
                     >
-                        <ApplicationLogo class="h-10 w-auto text-white" />
-                        <span
-                            v-if="!desktopSidebarCollapsed"
-                            class="font-semibold tracking-wide uppercase text-sm text-slate-100"
-                        >
-<span></span>
-                        </span>
-                                </Link>
+                        <ApplicationLogo class="h-12 w-auto text-white" />
+                    </Link>
 
                     <button
                         type="button"
@@ -297,11 +294,11 @@ const closeMobileSidebar = () => {
                         @click="toggleDesktopSidebar"
                         aria-label="Toggle sidebar width"
                     >
-                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                        <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16M4 6h10M10 18h10" />
                         </svg>
                     </button>
-                            </div>
+                </div>
 
                 <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1 relative z-10 custom-scrollbar">
                     <Link
@@ -326,12 +323,12 @@ const closeMobileSidebar = () => {
                             />
                         </svg>
                         <span v-if="!desktopSidebarCollapsed">{{ item.label }}</span>
-                                </Link>
+                    </Link>
                 </nav>
                 <div class="px-5 py-6 border-t border-white/10 text-xs text-slate-400">
                     <p v-if="!desktopSidebarCollapsed">Signed in as</p>
                     <p class="font-semibold text-slate-100 truncate">{{ user.name }}</p>
-                            </div>
+                </div>
             </aside>
 
             <transition name="fade">
@@ -352,10 +349,7 @@ const closeMobileSidebar = () => {
                 <div class="flex flex-col h-full relative z-10">
                     <div class="flex items-center justify-between px-5 py-6 border-b border-white/10">
                         <div class="flex items-center gap-3">
-                            <ApplicationLogo class="h-10 w-auto text-white" />
-                            <span class="font-semibold tracking-wide uppercase text-sm text-slate-100">
-
-                            </span>
+                            <ApplicationLogo class="h-12 w-auto text-white" />
                         </div>
                         <button
                             type="button"
