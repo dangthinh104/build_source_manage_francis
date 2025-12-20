@@ -94,6 +94,15 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', UserController::class);
         Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+
+    // Force Password Change Routes
+    Route::get('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'show'])->name('password.change');
+    Route::post('/auth/password/change', [\App\Http\Controllers\ForcePasswordChangeController::class, 'update']);
+
+    // Admin Reset Password Route
+    Route::post('/users/{user}/reset-password', [\App\Http\Controllers\UserController::class, 'resetPassword'])->name('users.reset-password');
+
         Route::post('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::post('/users/{id}/toggle-two-factor', [UserController::class, 'toggleTwoFactor'])->name('users.toggle_two_factor');
         Route::post('/users/{user}/reset-2fa', [UserController::class, 'resetTwoFactor'])->name('users.reset_2fa');

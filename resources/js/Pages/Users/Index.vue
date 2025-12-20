@@ -5,6 +5,8 @@ import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import InputError from "@/Components/InputError.vue";
+import DialogModal from '@/Components/DialogModal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { toast } from 'vue3-toastify';
 
 const page = usePage();
@@ -23,6 +25,16 @@ const confirmModalData = ref({
     confirmClass: '',
     onConfirm: null,
 });
+
+const showPasswordModal = ref(false);
+const tempPassword = ref('');
+const justResetUserName = ref('');
+
+const closePasswordModal = () => {
+    showPasswordModal.value = false;
+    tempPassword.value = '';
+    justResetUserName.value = '';
+};
 
 // Check if current user is super admin
 const isSuperAdmin = computed(() => {
@@ -154,6 +166,37 @@ const toggleTwoFactor = async (userId, currentStatus) => {
         processingTwoFactor.value[userId] = false;
     }
 };
+
+// Reset Password
+const confirmResetPassword = (userId, userName) => {
+    if (!isSuperAdmin.value) return;
+
+    showConfirmation({
+        title: 'Reset Password',
+        message: `Are you sure you want to reset the password for "${userName}"? A temporary password will be generated.`,
+        confirmText: 'Reset Password',
+        confirmClass: 'bg-red-600 hover:bg-red-700',
+        onConfirm: () => resetPassword(userId, userName),
+    });
+};
+
+const resetPassword = async (userId, userName) => {
+    try {
+        const response = await axios.post(route('users.reset-password', userId));
+
+        if (response.data.status === true) {
+            tempPassword.value = response.data.temp_password;
+            justResetUserName.value = userName;
+            showPasswordModal.value = true;
+            toast.success(response.data.message);
+        } else {
+            toast.error(response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to reset password:', error);
+        toast.error(error.response?.data?.message || 'Error: Could not reset password.');
+    }
+};
 </script>
 
 <template>
@@ -253,6 +296,13 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                 class="flex-1 py-2.5 text-center text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-50"
                             >
                                 {{ has2FAEnabled(user) ? 'Disable 2FA' : 'Enable 2FA' }}
+                            </button>
+                            <button
+                                v-if="isSuperAdmin && user.id !== $page.props.auth.user.id"
+                                @click="confirmResetPassword(user.id, user.name)"
+                                class="flex-1 py-2.5 text-center text-xs font-semibold text-amber-600 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+                            >
+                                Reset Pass
                             </button>
                         </div>
                     </div>
@@ -356,6 +406,16 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                                             </svg>
                                             <span>Delete</span>
                                         </button>
+                                        <button
+                                            v-if="isSuperAdmin && user.id !== $page.props.auth.user.id"
+                                            @click="confirmResetPassword(user.id, user.name)"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg font-medium hover:bg-amber-100 transition-all duration-200"
+                                            title="Reset Password"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -429,5 +489,30 @@ const toggleTwoFactor = async (userId, currentStatus) => {
                 </div>
             </Transition>
         </Teleport>
+
+    <!-- Temp Password Modal -->
+    <DialogModal :show="showPasswordModal" @close="closePasswordModal">
+        <template #title>
+            Password Reset Successful
+        </template>
+
+        <template #content>
+            <div class="space-y-4">
+                <p class="text-sm text-slate-600">
+                    The password for <strong>{{ justResetUserName }}</strong> has been reset. Please share this temporary password with them. They will be required to change it upon their next login.
+                </p>
+
+                <div class="mt-4 p-4 bg-slate-100 rounded-lg break-all font-mono text-xl text-center border border-slate-200 text-slate-900 tracking-wider">
+                    {{ tempPassword }}
+                </div>
+            </div>
+        </template>
+
+        <template #footer>
+            <SecondaryButton @click="closePasswordModal">
+                Close
+            </SecondaryButton>
+        </template>
+    </DialogModal>
     </AuthenticatedLayout>
 </template>

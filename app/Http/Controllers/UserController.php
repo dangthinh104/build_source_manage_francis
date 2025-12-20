@@ -279,4 +279,43 @@ class UserController extends Controller
         return redirect()->back()->with('success', 'User 2FA has been disabled');
     }
 
+    /**
+     * Generate a temporary password for a user and force them to change it on next login.
+     * Only accessible by Super Admin.
+     */
+    public function resetPassword(User $user)
+    {
+        // Ensure the acting user is Super Admin
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden. Only Super Admin can reset passwords.'
+            ], 403);
+        }
+
+        // Cannot reset password for self (use profile settings) or other Super Admins via this method usually?
+        // Requirement said "user khác" (other users).
+        // Let's allow resetting other super admins if needed, but definitely not self via this flow to avoid session kill confusion?
+        // Actually, preventing self-reset is good UX.
+        if (auth()->id() === $user->id) {
+             return response()->json([
+                'status' => false,
+                'message' => 'You cannot reset your own password via this tool. Use Profile Settings.'
+            ], 403);
+        }
+
+        $tempPassword = \Illuminate\Support\Str::random(12);
+
+        $user->password = \Illuminate\Support\Facades\Hash::make($tempPassword);
+        $user->must_change_password = true;
+        // Invalidate existing sessions? Maybe not strictly required but good practice.
+        // For now, just update password.
+        $user->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Temporary password generated.',
+            'temp_password' => $tempPassword // Frontend will show this in a modal
+        ]);
+    }
 }
