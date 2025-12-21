@@ -43,12 +43,12 @@ const scrollToSection = (id) => {
                         @click="scrollToSection(section.id)"
                         class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors text-left"
                         :class="activeSection === section.id 
-                            ? 'bg-indigo-50 text-indigo-700' 
+                            ? 'bg-primary-50 text-primary' 
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
                     >
                         <div 
                             class="w-1.5 h-1.5 rounded-full transition-colors"
-                            :class="activeSection === section.id ? 'bg-indigo-600' : 'bg-transparent'"
+                            :class="activeSection === section.id ? 'bg-primary-600' : 'bg-transparent'"
                         ></div>
                         {{ section.title }}
                     </button>

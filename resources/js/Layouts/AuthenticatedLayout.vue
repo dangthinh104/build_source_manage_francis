@@ -34,27 +34,43 @@ const preferences = computed(() => page.props.preferences || {
 // Apply CSS variables for theme colors
 const applyTheme = (themeColor) => {
     const root = document.documentElement;
-    // Map a few primary shades; these can be expanded or made configurable
+    // Map all theme colors from UserPreferencesForm
     const map = {
         indigo: {
-            '--color-primary': '79 70 229', // indigo-600 rgb(79 70 229)
+            '--color-primary': '79 70 229', // indigo-600
             '--color-primary-500': '99 102 241',
-            '--color-primary-50': '238 242 255'
+            '--color-primary-50': '238 242 255',
+            '--color-primary-600': '79 70 229'
+        },
+        purple: {
+            '--color-primary': '147 51 234', // purple-600
+            '--color-primary-500': '168 85 247',
+            '--color-primary-50': '250 245 255',
+            '--color-primary-600': '147 51 234'
         },
         blue: {
             '--color-primary': '37 99 235', // blue-600
             '--color-primary-500': '59 130 246',
-            '--color-primary-50': '240 249 255'
+            '--color-primary-50': '240 249 255',
+            '--color-primary-600': '37 99 235'
         },
-        green: {
-            '--color-primary': '16 185 129', // emerald-500 approximated
-            '--color-primary-500': '34 197 94',
-            '--color-primary-50': '240 253 244'
+        emerald: {
+            '--color-primary': '16 185 129', // emerald-500
+            '--color-primary-500': '52 211 153',
+            '--color-primary-50': '236 253 245',
+            '--color-primary-600': '5 150 105'
         },
         rose: {
-            '--color-primary': '244 63 94',
+            '--color-primary': '244 63 94', // rose-600
             '--color-primary-500': '251 113 133',
-            '--color-primary-50': '255 240 242'
+            '--color-primary-50': '255 241 242',
+            '--color-primary-600': '225 29 72'
+        },
+        orange: {
+            '--color-primary': '234 88 12', // orange-600
+            '--color-primary-500': '249 115 22',
+            '--color-primary-50': '255 247 237',
+            '--color-primary-600': '234 88 12'
         }
     };
 
@@ -129,6 +145,31 @@ const contentWidthClass = computed(() => {
         'wide': 'max-w-7xl lg:max-w-[90rem] 2xl:max-w-[100rem]',
         'full': 'max-w-full'
     }[width];
+});
+
+// Sidebar style classes
+const sidebarClasses = computed(() => {
+    const style = preferences.value.sidebar_style || 'gradient';
+    
+    const baseClasses = 'flex-col text-white shadow-2xl transition-all duration-300 relative';
+    
+    const styleMap = {
+        gradient: 'bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 shadow-slate-900/50',
+        solid: 'bg-slate-900 shadow-slate-900/70',
+        glass: 'bg-slate-900/80 backdrop-blur-xl shadow-slate-900/60'
+    };
+    
+    return `${baseClasses} ${styleMap[style]}`;
+});
+
+// Compact mode spacing classes
+const spacingClasses = computed(() => {
+    const compact = preferences.value.compact_mode || false;
+    return {
+        navItemPadding: compact ? 'px-4 py-2' : 'px-4 py-3',
+        mainPadding: compact ? 'py-4 sm:py-6 lg:py-8' : 'py-6 sm:py-8 lg:py-10 2xl:py-12',
+        cardPadding: compact ? 'px-6 sm:px-8 py-6' : 'px-6 sm:px-8 lg:px-10 py-8 lg:py-10'
+    };
 });
 
 const navItems = computed(() => {
@@ -281,8 +322,8 @@ const closeMobileSidebar = () => {
         </Transition>
         <div class="flex min-h-screen">
             <aside
-                class="hidden md:flex flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white shadow-2xl shadow-slate-900/50 transition-all duration-300 relative"
-                :class="desktopSidebarCollapsed ? 'w-20' : 'w-72'"
+                class="hidden md:flex"
+                :class="[sidebarClasses, desktopSidebarCollapsed ? 'w-20' : 'w-72']"
             >
                 <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
                 <div 
@@ -313,12 +354,13 @@ const closeMobileSidebar = () => {
                         v-for="item in navItems"
                         :key="item.key"
                         :href="route(item.routeName)"
-                        class="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
+                        class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
                         :class="[
                             isActive(item)
                                 ? 'nav-active text-white'
                                 : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md',
                             desktopSidebarCollapsed ? 'justify-center px-0' : '',
+                            spacingClasses.navItemPadding
                         ]"
                     >
                         <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
@@ -348,8 +390,8 @@ const closeMobileSidebar = () => {
                 />
             </transition>
             <div
-                class="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white shadow-2xl shadow-slate-900/80 transform transition-transform duration-300 md:hidden"
-                :class="mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+                class="fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 md:hidden"
+                :class="[sidebarClasses, mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full']"
                 role="dialog"
                 aria-modal="true"
             >
@@ -375,8 +417,8 @@ const closeMobileSidebar = () => {
                             v-for="item in navItems"
                             :key="`mobile-${item.key}`"
                             :href="route(item.routeName)"
-                            class="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
-                            :class="isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md'"
+                            class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
+                            :class="[isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md', spacingClasses.navItemPadding]"
                             @click="closeMobileSidebar"
                         >
                             <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
@@ -447,7 +489,7 @@ const closeMobileSidebar = () => {
                 </header>
 
                 <main class="flex-1 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
-                    <div class="mx-auto w-full px-4 sm:px-6 lg:px-10 2xl:px-16 py-6 sm:py-8 lg:py-10 2xl:py-12 space-y-6" :class="contentWidthClass">
+                    <div class="mx-auto w-full px-4 sm:px-6 lg:px-10 2xl:px-16 space-y-6" :class="[contentWidthClass, spacingClasses.mainPadding]">
                         <div class="rounded-3xl bg-white/90 backdrop-blur-sm shadow-xl shadow-slate-200/70 ring-1 ring-slate-200/50 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/80">
                             <div
                                 v-if="$slots.header"
@@ -455,7 +497,7 @@ const closeMobileSidebar = () => {
                             >
                                 <slot name="header" />
                             </div>
-                            <div class="px-6 sm:px-8 lg:px-10 py-8 lg:py-10">
+                            <div :class="spacingClasses.cardPadding">
                                 <slot />
                         </div>
                         </div>
