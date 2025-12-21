@@ -34,6 +34,10 @@ class BashScriptGenerator implements BuildScriptGeneratorInterface
             Parameter::getValue('npm_install_on_build', 'true'),
             FILTER_VALIDATE_BOOLEAN
         );
+        $npmRunBuild = filter_var(
+            Parameter::getValue('npm_run_build', 'true'),
+            FILTER_VALIDATE_BOOLEAN
+        );
         $defaultPm2Port = Parameter::getValue('default_pm2_port_start', '3000');
 
         // PM2 section
@@ -42,6 +46,7 @@ class BashScriptGenerator implements BuildScriptGeneratorInterface
         // Conditional steps
         $gitPullStep = $gitAutoPull ? $this->getGitPullStep() : '';
         $npmInstallStep = $npmInstallOnBuild ? $this->getNpmInstallStep() : '';
+        $npmBuildStep = $npmRunBuild ? $this->getNpmBuildStep() : '';
 
         // Escape folder path for safe use in shell script
         $escapedFolderPath = escapeshellarg($sourcePath);
@@ -70,13 +75,7 @@ fi
 
 {$gitPullStep}
 {$npmInstallStep}
-echo "-----\$(date): NPM BUILD-----"
-npm run build 2>&1
-if [ \$? -ne 0 ]; then
-    echo "Error: npm run build failed"
-    exit 1
-fi
-
+{$npmBuildStep}
 {$pm2Process}
 
 echo "-----\$(date): Build completed successfully-----"
@@ -126,5 +125,21 @@ echo "-----$(date): NPM Install-----"
 npm install 2>&1
 
 NPMINSTALL;
+    }
+
+    /**
+     * Get npm build step.
+     */
+    protected function getNpmBuildStep(): string
+    {
+        return <<<'NPMBUILD'
+echo "-----$(date): NPM BUILD-----"
+npm run build 2>&1
+if [ $? -ne 0 ]; then
+    echo "Error: npm run build failed"
+    exit 1
+fi
+
+NPMBUILD;
     }
 }

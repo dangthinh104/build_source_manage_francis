@@ -34,10 +34,6 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-    'telegram' => [
-        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
-        'channel_id' => env('TELEGRAM_CHANNEL_ID', '@francisOSC'),
-    ],
 
     'alerts' => [
         'emails' => array_filter(explode(',', env('ALERT_EMAILS', 'admin@example.com'))),

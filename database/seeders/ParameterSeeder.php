@@ -45,6 +45,12 @@ class ParameterSeeder extends Seeder
                 'description' => 'Run npm install during build process',
             ],
             [
+                'key' => 'npm_run_build',
+                'value' => 'true',
+                'type' => 'boolean',
+                'description' => 'Run npm run build during build process',
+            ],
+            [
                 'key' => 'APP_ENV_BUILD',
                 'value' => 'dev',
                 'type' => 'string',

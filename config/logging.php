@@ -132,12 +132,6 @@ return [
             'level' => 'info',
             'days' => 14,
         ],
-        'sms_telegram_log' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/sms_telegram_log/sms_telegram_log.log'),
-            'level' => 'info',
-            'days' => 14,
-        ],
 
         // Build service log channel - stores build execution logs with 7-day retention
         'build' => [
