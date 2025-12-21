@@ -151,11 +151,19 @@ const navItems = computed(() => {
         },
         {
             key: 'my_sites',
-            label: 'My Sites',
+            label: 'All Sites',
             routeName: 'my_site.index',
             patterns: ['my-site*', 'my_sites*', 'my-sites*', 'my_site.*', 'my_sites.*', 'my-sites.*'],
             permission: 'view_mysites',
             iconPath: ['M3 7h16', 'M3 12h10', 'M3 17h6'],
+        },
+        {
+            key: 'build_groups',
+            label: 'Build Groups',
+            routeName: 'build_groups.index',
+            patterns: ['build_groups.*'],
+            adminOnly: true,
+            iconPath: ['M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
         },
         {
             key: 'users',

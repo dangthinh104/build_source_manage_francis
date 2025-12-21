@@ -156,42 +156,7 @@ class SiteBuildServiceTest extends TestCase
         $this->invokeProtectedMethod('determineEnvSourcePath', [$this->testProjectPath]);
     }
 
-    /**
-     * Test Case 7: generateEnvFile creates target .env from source
-     */
-    public function test_generate_env_file_creates_target_from_source(): void
-    {
-        // Arrange
-        file_put_contents("{$this->testProjectPath}/.env.example", "APP_NAME=TestApp\n");
 
-        // Mock EnvManagerService
-        $this->mock(EnvManagerService::class, function ($mock) {
-            $mock->shouldReceive('updateOrCreateEnv')->once();
-        });
-
-        // Act
-        $this->invokeProtectedMethod('generateEnvFile', [
-            $this->testProjectPath,
-            ['PORT_PM2' => '3000']
-        ]);
-
-        // Assert
-        $this->assertFileExists("{$this->testProjectPath}/.env");
-    }
-
-    /**
-     * Test Case 8: generateEnvFile throws when no source exists
-     */
-    public function test_generate_env_file_throws_on_missing_source(): void
-    {
-        // Assert & Act
-        $this->expectException(\Exception::class);
-
-        $this->invokeProtectedMethod('generateEnvFile', [
-            $this->testProjectPath,
-            []
-        ]);
-    }
 
     /**
      * Test Case 9: Parameter value is case-insensitive

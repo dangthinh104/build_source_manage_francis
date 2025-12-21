@@ -128,6 +128,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/retry-all', [\App\Http\Controllers\QueueManagerController::class, 'retryAll'])->name('retry-all');
             Route::post('/flush', [\App\Http\Controllers\QueueManagerController::class, 'flush'])->name('flush');
         });
+
+        // Build Groups
+        Route::resource('build_groups', \App\Http\Controllers\BuildGroupController::class);
+        Route::post('/build_groups/{id}/build', [\App\Http\Controllers\BuildGroupController::class, 'build'])->name('build_groups.build');
     });
 
     /*

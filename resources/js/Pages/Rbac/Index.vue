@@ -8,7 +8,7 @@
 
         <div class="space-y-6">
             <!-- Info Card -->
-            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-4 rounded-2xl shadow-lg flex items-start gap-3">
+            <div class="btn-primary text-white px-6 py-4 rounded-2xl shadow-lg flex items-start gap-3">
                 <svg class="h-6 w-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -30,7 +30,61 @@
                     </h3>
                 </div>
 
-                <div class="overflow-x-auto">
+                <!-- Mobile Card View -->
+                <div class="block md:hidden divide-y divide-slate-100">
+                    <!-- Super Admin Wildcard Card -->
+                    <div v-if="hasSuperAdminWildcard" class="p-4 bg-amber-50 border-l-4 border-amber-400">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="h-10 w-10 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
+                                <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-slate-900 text-sm">Super Admin: Full Access</p>
+                                <p class="text-xs text-slate-600">Wildcard (*) permission grants unrestricted access</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Permission Cards -->
+                    <div v-for="permission in permissions" :key="'mobile-' + permission" class="p-4 space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="h-8 w-8 shrink-0 rounded-lg bg-primary-50 flex items-center justify-center">
+                                <svg class="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-slate-900 font-mono">{{ permission }}</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2">
+                            <div v-for="role in roles" :key="role" class="flex flex-col items-center gap-1.5 p-2 rounded-lg border" :class="hasPermission(role, permission) ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'">
+                                <div class="h-6 w-6 rounded-full flex items-center justify-center" :class="hasPermission(role, permission) ? 'bg-green-100' : 'bg-slate-100'">
+                                    <svg v-if="hasPermission(role, permission)" class="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <svg v-else class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </div>
+                                <span class="text-[10px] font-medium text-slate-700 text-center">{{ formatRoleName(role) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State Mobile -->
+                    <div v-if="permissions.length === 0" class="p-8 text-center">
+                        <svg class="h-12 w-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <p class="text-sm font-medium text-slate-500">No permissions configured</p>
+                        <p class="text-xs text-slate-400 mt-1">Run <code class="bg-slate-100 px-2 py-1 rounded text-xs">php artisan app:import-rights</code></p>
+                    </div>
+                </div>
+
+                <!-- Desktop Table View -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-slate-50 sticky top-0 z-10">
                             <tr>

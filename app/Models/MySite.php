@@ -30,6 +30,12 @@ class MySite extends Model
         return $this->belongsTo(User::class, 'last_user_build');
     }
 
+    public function buildGroups()
+    {
+        return $this->belongsToMany(BuildGroup::class, 'build_group_sites', 'my_site_id', 'build_group_id')
+                    ->withTimestamps();
+    }
+
     /**
      * Get human-readable time for last successful build
      */

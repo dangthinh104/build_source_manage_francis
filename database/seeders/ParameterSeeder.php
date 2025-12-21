@@ -19,12 +19,7 @@ class ParameterSeeder extends Seeder
                 'type' => 'path',
                 'description' => 'Base path for all projects and sites',
             ],
-            [
-                'key' => 'build_manager_path',
-                'value' => env('PATH_PROJECT', '/var/www/html') . '/build_source_manage',
-                'type' => 'path',
-                'description' => 'Path to the build manager application',
-            ],
+
             [
                 'key' => 'dev_email',
                 'value' => env('DEV_EMAIL', 'dev@example.com'),
