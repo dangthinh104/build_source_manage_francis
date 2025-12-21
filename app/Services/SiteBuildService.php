@@ -185,8 +185,20 @@ class SiteBuildService
             $shContent = $this->storage->get($site->sh_content_dir);
         }
 
+        // Read .env file from site's source path
+        $envContent = '';
+        if ($site->path_source_code) {
+            $envPath = rtrim($site->path_source_code, '/') . '/.env';
+            if (file_exists($envPath) && is_readable($envPath)) {
+                $envContent = file_get_contents($envPath);
+            } else {
+                $envContent = 'File .env not found or not readable at: ' . $envPath;
+            }
+        }
+
         return [
             'sh_content'         => $shContent,
+            'env_content'        => $envContent,
             'site_name'          => $site->site_name,
             'last_path_log'      => $site->path_log,
             'sh_content_dir'     => $site->sh_content_dir,

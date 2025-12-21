@@ -61,6 +61,7 @@ const details = {
 
 const detailSite = {
     'sh_content'         : '',
+    'env_content'        : '',
     'site_name'          : '',
     'last_path_log'      : '',
     'sh_content_dir'     : '',
@@ -104,6 +105,7 @@ const openSiteDetailDialog = async (siteID) => {
     try {
         const response = await axios.post(route('my_site.open_popup_detail'), {'site_id': siteID});
         detailSite.sh_content = response.data.sh_content
+        detailSite.env_content = response.data.env_content
         detailSite.site_name = response.data.site_name
         detailSite.last_path_log = response.data.last_path_log
         detailSite.sh_content_dir = response.data.sh_content_dir
@@ -633,6 +635,11 @@ const performDeleteSite = async () => {
                 <div>
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Shell Script Preview</h4>
                     <pre class="bg-gray-900 text-green-400 font-mono p-4 rounded-md overflow-x-auto whitespace-pre-wrap text-sm max-h-80">{{ detailSite.sh_content }}</pre>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">.env File Content</h4>
+                    <pre class="bg-gray-900 text-amber-400 font-mono p-4 rounded-md overflow-x-auto whitespace-pre-wrap text-sm max-h-80">{{ detailSite.env_content || 'No .env file available' }}</pre>
                 </div>
 
                 <div class="flex justify-end">
