@@ -191,19 +191,147 @@ const scrollToSection = (id) => {
                             <h2 class="text-2xl font-bold text-slate-900 m-0">Environment Variables</h2>
                         </div>
 
-                        <p>
-                            The <strong>ENV Variables</strong> module allows managing global variables that can be injected into any site's <code>.env</code> file dynamically.
+                        <p class="text-lg text-slate-600 leading-relaxed">
+                            The <strong>Environment Variables Manager</strong> provides a secure, centralized way to manage configuration values across your sites. 
+                            It supports <strong>three scopes</strong>: Global, Group, and Site-Specific variables.
                         </p>
+
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 my-6 rounded-r-lg">
+                            <p class="text-blue-900 text-sm m-0">
+                                <strong>Security:</strong> All variable values are encrypted at rest in the database and only decrypted during build time.
+                            </p>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-slate-800 mt-8">How It Works</h3>
+                        <p>When a site is built, the system:</p>
+                        <ol class="list-decimal pl-5 space-y-2 text-slate-600">
+                            <li>Copies the source env file (e.g., <code>.env.example</code>) to <code>.env</code></li>
+                            <li>Scans for placeholder patterns like <code>###VARIABLE_NAME</code></li>
+                            <li>Queries the database for matching variables based on scope</li>
+                            <li>Replaces placeholders with decrypted values</li>
+                        </ol>
+
+                        <h3 class="text-xl font-semibold text-slate-800 mt-8">Variable Scopes</h3>
                         
-                        <h3 class="text-xl font-semibold text-slate-800">How it works</h3>
+                        <div class="grid md:grid-cols-3 gap-4 my-6 not-prose">
+                            <div class="border-2 border-green-200 rounded-xl p-5 bg-green-50">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                                    <h4 class="font-bold text-green-900 m-0">Global</h4>
+                                </div>
+                                <p class="text-sm text-green-800 mb-3">Shared across all sites. Use for common API keys, base URLs, or application secrets.</p>
+                                <div class="bg-white rounded-lg p-3 border border-green-200">
+                                    <p class="text-xs font-mono text-slate-600 mb-1">Pattern:</p>
+                                    <code class="text-xs bg-slate-100 px-2 py-1 rounded block">###VAR_NAME</code>
+                                </div>
+                            </div>
+
+                            <div class="border-2 border-purple-200 rounded-xl p-5 bg-purple-50">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-purple-500"></span>
+                                    <h4 class="font-bold text-purple-900 m-0">Group</h4>
+                                </div>
+                                <p class="text-sm text-purple-800 mb-3">Scoped to a logical group (e.g., DEV_SERVER, PROD_SERVER). Use for environment-specific configs.</p>
+                                <div class="bg-white rounded-lg p-3 border border-purple-200">
+                                    <p class="text-xs font-mono text-slate-600 mb-1">Pattern:</p>
+                                    <code class="text-xs bg-slate-100 px-2 py-1 rounded block">###GROUP###VAR_NAME</code>
+                                </div>
+                            </div>
+
+                            <div class="border-2 border-blue-200 rounded-xl p-5 bg-blue-50">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                    <h4 class="font-bold text-blue-900 m-0">Site-Specific</h4>
+                                </div>
+                                <p class="text-sm text-blue-800 mb-3">Unique to a single site. Use for site-specific secrets or configurations.</p>
+                                <div class="bg-white rounded-lg p-3 border border-blue-200">
+                                    <p class="text-xs font-mono text-slate-600 mb-1">Pattern:</p>
+                                    <code class="text-xs bg-slate-100 px-2 py-1 rounded block">###SITE_NAME###VAR_NAME</code>
+                                    <p class="text-xs text-blue-700 mt-2">* <code>SITE_NAME</code> is a reserved keyword</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-slate-800 mt-8">Step-by-Step Guide</h3>
+
+                        <h4 class="text-lg font-semibold text-slate-700 mt-6">1. Create a Variable</h4>
+                        <p>Navigate to <strong>Env Variables</strong> and click "Add Variable":</p>
                         <ul class="list-disc pl-5 space-y-2 text-slate-600">
-                            <li>Define a variable (e.g., <code>GLOBAL_API_KEY</code>) in the Global Env Manager.</li>
-                            <li>The value is encrypted securely in the database.</li>
-                            <li>In your project's local <code>.env.example</code> (or source env file), use the placeholder: 
-                                <br><code class="bg-slate-100 px-2 py-1 rounded text-sm">API_KEY=###GLOBAL_API_KEY</code>
-                            </li>
-                            <li>During the build process, the system replaces <code>###GLOBAL_API_KEY</code> with the actual decrypted value.</li>
+                            <li><strong>Variable Name:</strong> Use UPPERCASE_SNAKE_CASE (e.g., <code>API_KEY</code>, <code>DB_PASSWORD</code>)</li>
+                            <li><strong>Variable Value:</strong> The actual value (can be JSON, text, or numbers)</li>
+                            <li><strong>Group Name (Optional):</strong> Enter if this is group-scoped (e.g., <code>PROD_SERVER</code>)</li>
+                            <li><strong>My Site (Optional):</strong> Select if this is site-specific</li>
                         </ul>
+
+                        <div class="bg-amber-50 border-l-4 border-amber-400 p-4 my-4 rounded-r-lg">
+                            <p class="text-amber-800 text-sm m-0">
+                                <strong>Note:</strong> You cannot set both Group Name <strong>AND</strong> My Site. Choose one or leave both empty for a global variable.
+                            </p>
+                        </div>
+
+                        <h4 class="text-lg font-semibold text-slate-700 mt-6">2. Use in Your .env.example File</h4>
+                        <p>Add placeholders in your project's <code>.env.example</code> file:</p>
+
+                        <div class="bg-slate-900 rounded-xl p-5 my-4 overflow-x-auto">
+                            <pre class="text-xs text-slate-100 m-0"><code># Global Variables (shared across all sites)
+APP_KEY=###APP_KEY
+STRIPE_SECRET=###STRIPE_SECRET
+
+# Group Variables (e.g., for staging vs production)
+DB_HOST=###PROD_SERVER###DB_HOST
+DB_PORT=###PROD_SERVER###DB_PORT
+DB_NAME=###PROD_SERVER###DB_NAME
+
+# Site-Specific Variables (unique per site)
+OAUTH_CLIENT_ID=###SITE_NAME###OAUTH_CLIENT_ID
+OAUTH_CLIENT_SECRET=###SITE_NAME###OAUTH_CLIENT_SECRET
+SITE_DOMAIN=###SITE_NAME###DOMAIN</code></pre>
+                        </div>
+
+                        <h4 class="text-lg font-semibold text-slate-700 mt-6">3. Build the Site</h4>
+                        <p>When you trigger a build, the placeholders are automatically replaced:</p>
+
+                        <div class="bg-white border border-slate-200 rounded-xl p-5 my-4">
+                            <p class="text-sm font-semibold text-slate-700 mb-3">Example Result:</p>
+                            <div class="grid md:grid-cols-2 gap-4 text-xs font-mono">
+                                <div>
+                                    <p class="text-slate-500 mb-2">Before (in .env.example):</p>
+                                    <code class="bg-slate-100 p-2 rounded block">DB_HOST=###PROD_SERVER###DB_HOST</code>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500 mb-2">After (in .env):</p>
+                                    <code class="bg-green-100 p-2 rounded block text-green-800">DB_HOST=mysql-prod.example.com</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-slate-800 mt-8">Best Practices</h3>
+                        <ul class="list-disc pl-5 space-y-2 text-slate-600">
+                            <li><strong>Global Variables:</strong> Use for truly shared values like third-party API keys, application secrets</li>
+                            <li><strong>Group Variables:</strong> Perfect for environment-specific configs (dev/staging/prod database credentials)</li>
+                            <li><strong>Site-Specific:</strong> Use when each site needs unique values (OAuth credentials, custom domains)</li>
+                            <li><strong>Naming Convention:</strong> Keep variable names descriptive and use UPPERCASE_SNAKE_CASE</li>
+                            <li><strong>Security:</strong> Never commit actual secrets to version control - always use placeholders</li>
+                        </ul>
+
+                        <h3 class="text-xl font-semibold text-slate-800 mt-8">Troubleshooting</h3>
+                        <div class="space-y-4">
+                            <div class="border border-slate-200 rounded-lg p-4">
+                                <p class="font-semibold text-slate-800 mb-2">❓ Placeholder not replaced after build</p>
+                                <ul class="text-sm text-slate-600 space-y-1 ml-4">
+                                    <li>• Check variable name matches exactly (case-sensitive)</li>
+                                    <li>• Verify correct scope (global/group/site) is set</li>
+                                    <li>• Check build logs for warnings about missing variables</li>
+                                </ul>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-4">
+                                <p class="font-semibold text-slate-800 mb-2">❓ Cannot save variable with both Group and Site</p>
+                                <ul class="text-sm text-slate-600 space-y-1 ml-4">
+                                    <li>• This is intentional - scopes are mutually exclusive</li>
+                                    <li>• Choose one scope or leave both empty for global</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

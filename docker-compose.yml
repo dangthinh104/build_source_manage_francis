@@ -9,7 +9,8 @@ services:
     working_dir: /var/www/html/build_source
     volumes:
       - .:/var/www/html/build_source
-      - C:/SourceCode/nodejs-build:/var/www/html/nodejs_test
+      - C:/SourceCode/nodejs-project:/var/www/html/nodejs_test
+      - C:/SourceCode/nodejs-test:/var/www/html/nodejs_test
       - C:/SourceCode/log_pm2:/var/www/html/log_pm2
       - /var/www/html/build_source/vendor
       - /var/www/html/build_source/node_modules

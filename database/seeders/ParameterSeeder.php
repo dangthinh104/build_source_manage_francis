@@ -26,29 +26,31 @@ class ParameterSeeder extends Seeder
                 'type' => 'email',
                 'description' => 'Default developer email for notifications',
             ],
-            [
-                'key' => 'default_pm2_port_start',
-                'value' => '3000',
-                'type' => 'integer',
-                'description' => 'Starting port number for PM2 processes',
-            ],
+
+            // Build Process Configuration
             [
                 'key' => 'git_auto_pull',
                 'value' => 'true',
                 'type' => 'boolean',
-                'description' => 'Enable automatic git pull before build',
+                'description' => 'Enable automatic git pull during build process',
             ],
             [
                 'key' => 'npm_install_on_build',
                 'value' => 'true',
                 'type' => 'boolean',
-                'description' => 'Run npm install during build process',
+                'description' => 'Enable npm install during build process',
             ],
             [
                 'key' => 'npm_run_build',
                 'value' => 'true',
                 'type' => 'boolean',
-                'description' => 'Run npm run build during build process',
+                'description' => 'Enable npm run build during build process',
+            ],
+            [
+                'key' => 'default_pm2_port_start',
+                'value' => '3000',
+                'type' => 'integer',
+                'description' => 'Default starting port for PM2 applications',
             ],
             [
                 'key' => 'APP_ENV_BUILD',
@@ -56,6 +58,15 @@ class ParameterSeeder extends Seeder
                 'type' => 'string',
                 'description' => 'Defines the source .env file to copy from. Values: "dev" (.env.develop), "prod" (.env.prod). Default is .env.example.',
             ],
+
+            // Environment Variable Configuration
+            [
+                'key' => 'ENV_SITE_NAME_KEYWORD',
+                'value' => 'SITE_NAME',
+                'type' => 'string',
+                'description' => 'Reserved keyword for site-specific env variable placeholders (e.g., ###SITE_NAME###API_KEY)',
+            ],
+
             [
                 'key' => 'LOG_PM2_PATH',
                 'value' => env('LOG_PM2_PATH', '/var/www/html/log_pm2'),

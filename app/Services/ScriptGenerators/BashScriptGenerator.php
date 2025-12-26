@@ -51,7 +51,7 @@ class BashScriptGenerator implements BuildScriptGeneratorInterface
         // Escape folder path for safe use in shell script
         $escapedFolderPath = escapeshellarg($sourcePath);
 
-        return <<<EOT
+        $script = <<<EOT
 #!/bin/bash
 # Build script for {$siteName}
 # All output goes to stdout and is captured by PHP
@@ -81,6 +81,10 @@ fi
 echo "-----\$(date): Build completed successfully-----"
 exit 0
 EOT;
+
+        // CRITICAL: Convert Windows line endings (CRLF) to Unix (LF)
+        // This prevents "$'\r': command not found" errors on Linux servers
+        return str_replace("\r\n", "\n", $script);
     }
 
     /**

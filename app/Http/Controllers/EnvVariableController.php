@@ -38,7 +38,7 @@ class EnvVariableController extends Controller
     {
         $this->checkAdminAccess();
 
-        $query = EnvVariable::query();
+        $query = EnvVariable::with('mySite');
 
         if ($request->has('variable_name')) {
             $query->where('variable_name', 'like', '%' . $request->input('variable_name') . '%');
@@ -51,12 +51,16 @@ class EnvVariableController extends Controller
                 'id' => $variable->id,
                 'variable_name' => $variable->variable_name,
                 'variable_value' => decryptValue($variable->variable_value),
+                'group_name' => $variable->group_name,
+                'my_site_id' => $variable->my_site_id,
+                'site_name' => $variable->mySite?->site_name,
             ];
         });
 
         return Inertia::render('EnvVariables/Index', [
             'envVariables' => $envVariables,
             'filters' => $request->only(['variable_name']),
+            'sites' => \App\Models\MySite::orderBy('site_name')->get(['id', 'site_name']),
         ]);
     }
 
@@ -68,13 +72,38 @@ class EnvVariableController extends Controller
         $this->checkAdminAccess();
 
         $validated = $request->validate([
-            'variable_name' => 'required|string|max:255|unique:env_variables,variable_name',
+            'variable_name' => 'required|string|max:255',
             'variable_value' => 'required|string',
+            'group_name' => 'nullable|string|max:255',
+            'my_site_id' => 'nullable|integer|exists:my_site,id',
         ]);
+
+        // Business logic: group_name and my_site_id are mutually exclusive
+        if (!empty($validated['group_name']) && !empty($validated['my_site_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty for a global variable.',
+            ], 422);
+        }
+
+        // Check for duplicate in the same scope
+        $existingVar = EnvVariable::where('variable_name', $validated['variable_name'])
+            ->where('group_name', $validated['group_name'] ?? null)
+            ->where('my_site_id', $validated['my_site_id'] ?? null)
+            ->first();
+
+        if ($existingVar) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A variable with this name already exists in the same scope.',
+            ], 422);
+        }
 
         $data = EnvVariable::create([
             'variable_name' => $validated['variable_name'],
             'variable_value' => encryptValue($validated['variable_value']),
+            'group_name' => $validated['group_name'] ?? null,
+            'my_site_id' => $validated['my_site_id'] ?? null,
         ]);
 
         return response()->json([
@@ -95,10 +124,22 @@ class EnvVariableController extends Controller
 
         $validated = $request->validate([
             'variable_value' => 'required|string',
+            'group_name' => 'nullable|string|max:255',
+            'my_site_id' => 'nullable|integer|exists:my_site,id',
         ]);
+
+        // Business logic: group_name and my_site_id are mutually exclusive
+        if (!empty($validated['group_name']) && !empty($validated['my_site_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty for a global variable.',
+            ], 422);
+        }
 
         $envVariable->update([
             'variable_value' => encryptValue($validated['variable_value']),
+            'group_name' => $validated['group_name'] ?? null,
+            'my_site_id' => $validated['my_site_id'] ?? null,
         ]);
 
         return response()->json([

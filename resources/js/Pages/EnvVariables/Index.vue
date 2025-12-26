@@ -51,6 +51,29 @@
                                 class="border border-slate-300 rounded-xl focus-within:ring-2 focus-within:ring-indigo-400/50 focus-within:border-indigo-400 transition-all duration-200 hover:border-slate-400 overflow-hidden"
                             />
                         </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Group Name (Optional)</label>
+                            <input 
+                                v-model="newVariable.group_name" 
+                                type="text" 
+                                :disabled="!!newVariable.my_site_id"
+                                class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed" 
+                                placeholder="e.g., DEV_SERVER"
+                            />
+                            <p class="text-xs text-slate-500 mt-1">For group-scoped variables</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">My Site (Optional)</label>
+                            <select 
+                                v-model="newVariable.my_site_id" 
+                                :disabled="!!newVariable.group_name"
+                                class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                            >
+                                <option :value="null">-- Select Site --</option>
+                                <option v-for="site in sites" :key="site.id" :value="site.id">{{ site.site_name }}</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">For site-specific variables</p>
+                        </div>
                     </div>
                     <div class="mt-4">
                         <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 btn-primary text-white rounded-xl font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
@@ -133,6 +156,7 @@
                                     />
                                 </th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Value</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Scope</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -150,6 +174,26 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="text-sm text-slate-600 font-mono bg-slate-100 px-3 py-1 rounded-lg">{{ variable.variable_value }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span v-if="variable.group_name" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Group: {{ variable.group_name }}
+                                    </span>
+                                    <span v-else-if="variable.my_site_id" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                        </svg>
+                                        Site: {{ variable.site_name }}
+                                    </span>
+                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Global
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
@@ -175,7 +219,7 @@
                                 </td>
                             </tr>
                             <tr v-if="envVariables.data.length === 0">
-                                <td colspan="3" class="px-6 py-12 text-center">
+                                <td colspan="4" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-slate-500">
                                         <svg class="h-12 w-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -198,6 +242,7 @@
             <EditModal
                 v-if="isEditModalOpen"
                 :variable="selectedVariable"
+                :sites="sites"
                 @close="isEditModalOpen = false"
                 @update="updateVariable"
             />
@@ -223,6 +268,7 @@ const { confirm } = useConfirm();
 const props = defineProps({
     envVariables: Object,
     filters: Object,
+    sites: Array,
 });
 
 const searchParams = reactive({
@@ -245,6 +291,8 @@ const flash = page.props?.flash || {}; // Set a default empty object if flash is
 const newVariable = reactive({
     variable_name: '',
     variable_value: '',
+    group_name: '',
+    my_site_id: null,
 });
 
 const isEditModalOpen = ref(false);
@@ -252,17 +300,26 @@ const selectedVariable = ref(null);
 
 const storeVariable = async () => {
     try {
+        // Validation: ensure group and site are mutually exclusive
+        if (newVariable.group_name && newVariable.my_site_id) {
+            toast('A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty.', { type: 'warning' });
+            return;
+        }
+
         const response = await axios.post('/envVariables', newVariable);
         if (response.data.success) {
             newVariable.variable_name = '';
             newVariable.variable_value = '';
+            newVariable.group_name = '';
+            newVariable.my_site_id = null;
+            toast('Variable created successfully', { type: 'success' });
             router.reload({ only: ['envVariables'] });
         } else {
-            alert('Failed to add variable: ' + (response.data.message || 'Unknown error'));
+            toast('Failed to add variable: ' + (response.data.message || 'Unknown error'), { type: 'error' });
         }
     } catch (error) {
         console.error('Error when add env:', error);
-        alert('Error when adding variable: ' + (error.response?.data?.message || error.message));
+        toast('Error when adding variable: ' + (error.response?.data?.message || error.message), { type: 'error' });
     }
 };
 

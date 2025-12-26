@@ -241,7 +241,7 @@ class SiteBuildService
             }
             @chmod($targetPath, 0664);
 
-            $this->replacePlaceholders($targetPath, $logger);
+            $this->replacePlaceholders($targetPath, $logger, $site);
 
             // Read source content for selective updates
             $sourceContent = file_get_contents($sourcePath);
@@ -284,50 +284,130 @@ class SiteBuildService
     }
 
     /**
-     * Replace ###VARIABLE_NAME placeholders in .env file with values from env_variables table
+     * Replace placeholders in .env file with values from env_variables table
+     * 
+     * Supports three formats:
+     * 1. ###VAR_NAME           → Global variable (no group, no site)
+     * 2. ###GROUP_NAME###VAR_NAME → Group-scoped variable
+     * 3. ###SITE_NAME###VAR_NAME  → Site-specific variable (SITE_NAME is reserved keyword)
      */
-    protected function replacePlaceholders(string $filePath, $logger): void
+    protected function replacePlaceholders(string $filePath, $logger, MySite $site): void
     {
         $content = file_get_contents($filePath);
 
-        preg_match_all('/###([A-Z0-9_]+)/', $content, $matches);
+        // Pattern 1: ###PREFIX###VAR_NAME (group or site-specific)
+        // Pattern 2: ###VAR_NAME (global)
+        $pattern = '/###([A-Z0-9_]+)(###([A-Z0-9_]+))?/';
+        
+        preg_match_all($pattern, $content, $matches, PREG_SET_ORDER);
 
-        if (empty($matches[1])) {
+        if (empty($matches)) {
             return;
         }
 
-        $variableNames = array_unique($matches[1]);
-        $logger->info('Found placeholders to replace', ['variables' => $variableNames]);
+        $logger->info('Found placeholders to replace', [
+            'count' => count($matches),
+            'site_id' => $site->id,
+            'site_name' => $site->site_name,
+        ]);
 
-        $envVariables = \App\Models\EnvVariable::whereIn('variable_name', $variableNames)->get();
+        // Load site-specific keyword from parameters (configurable)
+        $siteNameKeyword = strtoupper(
+            Parameter::getValue('ENV_SITE_NAME_KEYWORD', 'SITE_NAME')
+        );
 
+        // Build a value map for all placeholders
         $valueMap = [];
-        foreach ($envVariables as $envVar) {
-            // Assuming globally available decryptValue helper or use Crypt
-            if (function_exists('decryptValue')) {
-                $decryptedValue = decryptValue($envVar->variable_value);
-            } else {
-                try {
-                    $decryptedValue = \Illuminate\Support\Facades\Crypt::decryptString($envVar->variable_value);
-                } catch (\Exception $e) {
-                    $decryptedValue = false;
-                }
-            }
+        
+        foreach ($matches as $match) {
+            $fullPlaceholder = $match[0]; // e.g., "###APP_KEY" or "###DEV_SERVER###DB_HOST"
             
-            if ($decryptedValue !== false) {
-                $valueMap[$envVar->variable_name] = $decryptedValue;
+            // Check if it's a prefixed pattern (###PREFIX###VAR)
+            if (isset($match[3]) && !empty($match[3])) {
+                $prefix = $match[1];      // e.g., "DEV_SERVER" or "SITE_NAME"
+                $varName = $match[3];     // e.g., "DB_HOST" or "API_KEY"
+                
+                if (strtoupper($prefix) === $siteNameKeyword) {
+                    // Site-specific variable
+                    $envVar = \App\Models\EnvVariable::forSite($site->id)
+                        ->where('variable_name', $varName)
+                        ->first();
+                    
+                    if ($envVar) {
+                        $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
+                        $logger->debug('Site-specific variable matched', [
+                            'variable' => $varName,
+                            'site_id' => $site->id,
+                            'keyword' => $siteNameKeyword,
+                        ]);
+                    } else {
+                        $logger->warning('Site-specific variable not found', [
+                            'variable' => $varName,
+                            'site_id' => $site->id,
+                            'keyword' => $siteNameKeyword,
+                        ]);
+                    }
+                } else {
+                    // Group-scoped variable
+                    $envVar = \App\Models\EnvVariable::forGroup($prefix)
+                        ->where('variable_name', $varName)
+                        ->first();
+                    
+                    if ($envVar) {
+                        $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
+                        $logger->debug('Group variable matched', [
+                            'variable' => $varName,
+                            'group' => $prefix,
+                        ]);
+                    } else {
+                        $logger->warning('Group variable not found', [
+                            'variable' => $varName,
+                            'group' => $prefix,
+                        ]);
+                    }
+                }
+            } else {
+                // Global variable (###VAR_NAME)
+                $varName = $match[1];
+                
+                $envVar = \App\Models\EnvVariable::global()
+                    ->where('variable_name', $varName)
+                    ->first();
+                
+                if ($envVar) {
+                    $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
+                    $logger->debug('Global variable matched', ['variable' => $varName]);
+                } else {
+                    $logger->warning('Global variable not found', ['variable' => $varName]);
+                }
             }
         }
 
-        $newContent = preg_replace_callback(
-            '/###([A-Z0-9_]+)/',
-            function ($match) use ($valueMap) {
-                return $valueMap[$match[1]] ?? $match[0];
-            },
-            $content
-        );
+        // Replace all placeholders with their values
+        $newContent = str_replace(array_keys($valueMap), array_values($valueMap), $content);
 
         file_put_contents($filePath, $newContent);
+        
+        $logger->info('Placeholder replacement complete', [
+            'replaced_count' => count($valueMap),
+            'path' => $filePath,
+        ]);
+    }
+
+    /**
+     * Helper method to decrypt environment variable value
+     */
+    protected function decryptEnvValue(string $encryptedValue)
+    {
+        if (function_exists('decryptValue')) {
+            return decryptValue($encryptedValue);
+        }
+        
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($encryptedValue);
+        } catch (\Exception $e) {
+            return $encryptedValue; // Return as-is if decryption fails
+        }
     }
 
     /**

@@ -36,6 +36,11 @@ class MySite extends Model
                     ->withTimestamps();
     }
 
+    public function envVariables()
+    {
+        return $this->hasMany(EnvVariable::class, 'my_site_id');
+    }
+
     /**
      * Get human-readable time for last successful build
      */

@@ -26,6 +26,29 @@
                                 class="mt-1 border border-gray-300 rounded-md shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden"
                             />
                         </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Group Name (Optional)</label>
+                            <input 
+                                v-model="form.group_name" 
+                                type="text" 
+                                :disabled="!!form.my_site_id"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                placeholder="e.g., DEV_SERVER"
+                            />
+                            <p class="text-xs text-gray-500 mt-1">For group-scoped variables</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">My Site (Optional)</label>
+                            <select 
+                                v-model="form.my_site_id" 
+                                :disabled="!!form.group_name"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            >
+                                <option :value="null">-- Select Site --</option>
+                                <option v-for="site in sites" :key="site.id" :value="site.id">{{ site.site_name }}</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">For site-specific variables</p>
+                        </div>
                         <div class="flex justify-end">
                             <button @click="$emit('close')" type="button" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Cancel</button>
                             <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Update</button>
@@ -41,9 +64,11 @@
 import { reactive, watch } from 'vue';
 import { Codemirror } from 'vue-codemirror';
 import { json } from '@codemirror/lang-json';
+import { toast } from 'vue3-toastify';
 
 const props = defineProps({
     variable: Object,
+    sites: Array,
 });
 
 const emit = defineEmits(['close', 'update']);
@@ -52,6 +77,8 @@ const form = reactive({
     id: null,
     variable_name: '',
     variable_value: '',
+    group_name: '',
+    my_site_id: null,
 });
 
 watch(
@@ -61,12 +88,19 @@ watch(
             form.id = newVal.id;
             form.variable_name = newVal.variable_name;
             form.variable_value = newVal.variable_value;
+            form.group_name = newVal.group_name || '';
+            form.my_site_id = newVal.my_site_id || null;
         }
     },
     { immediate: true }
 );
 
 const updateVariable = () => {
+    // Validation: ensure group and site are mutually exclusive
+    if (form.group_name && form.my_site_id) {
+        toast('A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty.', { type: 'warning' });
+        return;
+    }
     emit('update', { ...form });
 };
 </script>
