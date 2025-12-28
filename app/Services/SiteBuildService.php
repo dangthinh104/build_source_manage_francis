@@ -286,10 +286,11 @@ class SiteBuildService
     /**
      * Replace placeholders in .env file with values from env_variables table
      * 
-     * Supports three formats:
-     * 1. ###VAR_NAME           → Global variable (no group, no site)
-     * 2. ###GROUP_NAME###VAR_NAME → Group-scoped variable
-     * 3. ###SITE_NAME###VAR_NAME  → Site-specific variable (SITE_NAME is reserved keyword)
+     * Supports four formats:
+     * 1. ###VAR_NAME                  → Global variable (no group, no site)
+     * 2. ###SITE_NAME###VAR_NAME      → Dynamic Site (SITE_NAME is reserved keyword, current site being built)
+     * 3. ###ACTUAL_SITE_NAME###VAR_NAME → Explicit Site (ACTUAL_SITE_NAME matches a site_name in my_site table)
+     * 4. ###GROUP_NAME###VAR_NAME     → Group-scoped variable (fallback if not a site)
      */
     protected function replacePlaceholders(string $filePath, $logger, MySite $site): void
     {
@@ -328,42 +329,67 @@ class SiteBuildService
                 $varName = $match[3];     // e.g., "DB_HOST" or "API_KEY"
                 
                 if (strtoupper($prefix) === $siteNameKeyword) {
-                    // Site-specific variable
+                    // Site-specific variable (Dynamic Site - Current site being built)
                     $envVar = \App\Models\EnvVariable::forSite($site->id)
                         ->where('variable_name', $varName)
                         ->first();
                     
                     if ($envVar) {
                         $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
-                        $logger->debug('Site-specific variable matched', [
+                        $logger->debug('Dynamic site variable matched', [
                             'variable' => $varName,
                             'site_id' => $site->id,
                             'keyword' => $siteNameKeyword,
                         ]);
                     } else {
-                        $logger->warning('Site-specific variable not found', [
+                        $logger->warning('Dynamic site variable not found', [
                             'variable' => $varName,
                             'site_id' => $site->id,
                             'keyword' => $siteNameKeyword,
                         ]);
                     }
                 } else {
-                    // Group-scoped variable
-                    $envVar = \App\Models\EnvVariable::forGroup($prefix)
-                        ->where('variable_name', $varName)
-                        ->first();
+                    // Check if PREFIX matches an actual site_name (Explicit Site)
+                    $matchedSite = \App\Models\MySite::where('site_name', $prefix)->first();
                     
-                    if ($envVar) {
-                        $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
-                        $logger->debug('Group variable matched', [
-                            'variable' => $varName,
-                            'group' => $prefix,
-                        ]);
+                    if ($matchedSite) {
+                        // Explicit Site-specific variable
+                        $envVar = \App\Models\EnvVariable::forSite($matchedSite->id)
+                            ->where('variable_name', $varName)
+                            ->first();
+                        
+                        if ($envVar) {
+                            $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
+                            $logger->debug('Explicit site variable matched', [
+                                'variable' => $varName,
+                                'site_name' => $prefix,
+                                'site_id' => $matchedSite->id,
+                            ]);
+                        } else {
+                            $logger->warning('Explicit site variable not found', [
+                                'variable' => $varName,
+                                'site_name' => $prefix,
+                                'site_id' => $matchedSite->id,
+                            ]);
+                        }
                     } else {
-                        $logger->warning('Group variable not found', [
-                            'variable' => $varName,
-                            'group' => $prefix,
-                        ]);
+                        // Group-scoped variable (fallback)
+                        $envVar = \App\Models\EnvVariable::forGroup($prefix)
+                            ->where('variable_name', $varName)
+                            ->first();
+                        
+                        if ($envVar) {
+                            $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
+                            $logger->debug('Group variable matched', [
+                                'variable' => $varName,
+                                'group' => $prefix,
+                            ]);
+                        } else {
+                            $logger->warning('Group variable not found', [
+                                'variable' => $varName,
+                                'group' => $prefix,
+                            ]);
+                        }
                     }
                 }
             } else {
