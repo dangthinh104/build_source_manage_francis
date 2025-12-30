@@ -4,17 +4,15 @@ namespace App\Services;
 
 use App\Models\Parameter;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Jobs\SiteDestructionJob;
-use Illuminate\Bus\Dispatcher;
 
 class SiteDestructionService
 {
-    protected $storage;
+    protected MySiteStorageService $storage;
 
-    public function __construct()
+    public function __construct(MySiteStorageService $storage)
     {
-        $this->storage = Storage::disk('my_site_storage');
+        $this->storage = $storage;
     }
 
     /**
@@ -105,7 +103,12 @@ class SiteDestructionService
             // Use appName for storage path (site_name folder in my_site_storage)
             // NOT basename of siteFolderPath which is different (e.g., /var/www/test vs test.example.com)
             $storageFolderName = $appName ?: basename($siteFolderPath);
-            SiteDestructionJob::dispatch($siteFolderPath, $this->storage->path($storageFolderName), $appName, $apacheConf);
+            SiteDestructionJob::dispatch(
+                $siteFolderPath,
+                $this->storage->disk()->path($storageFolderName),
+                $appName,
+                $apacheConf
+            );
             $result['messages'][] = 'Destruction job dispatched';
             $result['success'] = true;
         } catch (\Exception $e) {

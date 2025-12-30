@@ -9,7 +9,8 @@ import Modal from "@/Components/Modal.vue";
 import axios from "axios";
 import Checkbox from "@/Components/Checkbox.vue";
 import LogHistoryModal from '@/Pages/Utils/LogHistoryModal.vue';
-import { toast } from 'vue3-toastify'
+import { toast } from 'vue3-toastify';
+import { wrapResponse } from '@/Utils/apiResponse';
 
 const page = usePage();
 
@@ -91,35 +92,39 @@ const updating = ref(false);
 // Function onHandle
 const onOpenLogDetails = async (siteID) => {
     try {
-        const response = await axios.post(route('my_site.get_content_log'), {'site_id': siteID});
-        details.log_content = response.data.log_content
-        details.site_name = response.data.site_name
-        details.path_log = response.data.path_log
+        const response = await wrapResponse(
+            axios.post(route('my_site.get_content_log'), {'site_id': siteID})
+        );
+        
+        if (response.isSuccess) {
+            const data = response.data;
+            details.log_content = data.log_content;
+            details.site_name = data.site_name;
+            details.path_log = data.path_log;
+        } else {
+            toast(response.message || 'Failed to load log', { type: 'error' });
+        }
     } catch (error) {
-        console.error("Error fetching suggestions:", error);
+        console.error("Error fetching log details:", error);
+        toast('Failed to load log', { type: 'error' });
     } finally {
         confirmingViewLog.value = true;
     }
 };
 const openSiteDetailDialog = async (siteID) => {
     try {
-        const response = await axios.post(route('my_site.open_popup_detail'), {'site_id': siteID});
-        detailSite.sh_content = response.data.sh_content
-        detailSite.env_content = response.data.env_content
-        detailSite.site_name = response.data.site_name
-        detailSite.last_path_log = response.data.last_path_log
-        detailSite.sh_content_dir = response.data.sh_content_dir
-        detailSite.created_at = response.data.created_at
-        detailSite.last_user_build = response.data.last_user_build
-        detailSite.last_build_success = response.data.last_build_success
-        detailSite.last_build_fail = response.data.last_build_fail
-        detailSite.port_pm2 = response.data.port_pm2
-        detailSite.last_build = response.data.last_build
-        detailSite.path_source_code = response.data.path_source_code
-        detailSite.api_endpoint_url = response.data.api_endpoint_url
-        detailSite.id = response.data.id
+        const response = await wrapResponse(
+            axios.post(route('my_site.open_popup_detail'), {'site_id': siteID})
+        );
+        
+        if (response.isSuccess) {
+            Object.assign(detailSite, response.data);
+        } else {
+            toast(response.message || 'Failed to load site details', { type: 'error' });
+        }
     } catch (error) {
-        console.error("Error fetching suggestions:", error);
+        console.error("Error fetching site details:", error);
+        toast('Failed to load site details', { type: 'error' });
     } finally {
         detailViewConfirm.value = true;
     }
@@ -149,45 +154,46 @@ const checkDomain = (domain) => {
 }
 const buildSite = async (siteID, index) => {
     try {
-        loadingIndices.value.push(index)
-        const response = await axios.post(route('my_site.build_my_site'), {'site_id': siteID});
+        loadingIndices.value.push(index);
+        const response = await wrapResponse(
+            axios.post(route('my_site.build_my_site'), {'site_id': siteID})
+        );
         
-        // Handle async queue response
-        if (response.data.status === 'queued') {
-            toast('Build queued! Processing in background... ⏳', {
-                type: 'info',
-                position: 'top-right',
-                duration: 4000
-            })
+        if (response.isSuccess) {
+            const buildData = response.data;
             
-            // Poll for build completion
-            pollBuildStatus(siteID, index);
-            return; // Don't remove from loadingIndices yet
-        }
-        
-        // Legacy: Handle synchronous success (if any)
-        if (response.data.status === 1) {
+            // Check if build was queued (async)
+            if (buildData.status === 'queued') {
+                toast('Build queued! Processing in background... ⏳', {
+                    type: 'info',
+                    position: 'top-right',
+                    duration: 4000
+                });
+                
+                // Poll for build completion
+                pollBuildStatus(siteID, index);
+                return; // Don't remove from loadingIndices yet
+            }
+            
+            // Immediate success
             toast('Build completed successfully! 🎉', {
                 type: 'success',
                 position: 'top-right',
                 duration: 4000
-            })
+            });
             setTimeout(() => location.reload(), 1500);
         } else {
-            toast(response.data.message || 'Build failed', {
-                type: 'error',
-                position: 'top-right',
-                duration: 5000
-            })
-            loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+            response.handleToast(toast);
+            loadingIndices.value = loadingIndices.value.filter(i => i !== index);
         }
     } catch (error) {
-        toast('Build failed: ' + (error.response?.data?.message || 'Something went wrong'), {
+        console.error('Build error:', error);
+        toast('Build failed: ' + (error.message || 'Something went wrong'), {
             type: 'error',
             position: 'top-right',
             duration: 5000
-        })
-        loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+        });
+        loadingIndices.value = loadingIndices.value.filter(i => i !== index);
     }
 };
 
@@ -200,33 +206,38 @@ const pollBuildStatus = async (siteID, index) => {
         polls++;
         
         try {
-            const response = await axios.post(route('my_site.build_status'), { site_id: siteID });
-            const status = response.data.status;
+            const response = await wrapResponse(
+                axios.post(route('my_site.build_status'), { site_id: siteID })
+            );
             
-            if (status === 'success') {
-                clearInterval(pollInterval);
-                toast('Build completed successfully! 🎉', {
-                    type: 'success',
-                    position: 'top-right',
-                    duration: 4000
-                })
-                setTimeout(() => location.reload(), 1500);
-            } else if (status === 'failed') {
-                clearInterval(pollInterval);
-                toast('Build failed. Check logs for details.', {
-                    type: 'error',
-                    position: 'top-right',
-                    duration: 5000
-                })
-                loadingIndices.value = loadingIndices.value.filter(i => i !== index)
-            } else if (polls >= maxPolls) {
-                clearInterval(pollInterval);
-                toast('Build is taking longer than expected. Check logs for status.', {
-                    type: 'warning',
-                    position: 'top-right',
-                    duration: 5000
-                })
-                loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+            if (response.isSuccess) {
+                const buildStatus = response.data.status;
+                
+                if (buildStatus === 'success') {
+                    clearInterval(pollInterval);
+                    toast('Build completed successfully! 🎉', {
+                        type: 'success',
+                        position: 'top-right',
+                        duration: 4000
+                    });
+                    setTimeout(() => location.reload(), 1500);
+                } else if (buildStatus === 'failed') {
+                    clearInterval(pollInterval);
+                    toast('Build failed. Check logs for details.', {
+                        type: 'error',
+                        position: 'top-right',
+                        duration: 5000
+                    });
+                    loadingIndices.value = loadingIndices.value.filter(i => i !== index);
+                } else if (polls >= maxPolls) {
+                    clearInterval(pollInterval);
+                    toast('Build is taking longer than expected. Check logs for status.', {
+                        type: 'warning',
+                        position: 'top-right',
+                        duration: 5000
+                    });
+                    loadingIndices.value = loadingIndices.value.filter(i => i !== index);
+                }
             }
             // If status is 'processing' or 'queued', continue polling
         } catch (error) {
@@ -234,7 +245,7 @@ const pollBuildStatus = async (siteID, index) => {
             // Continue polling on error (network issues, etc.)
             if (polls >= maxPolls) {
                 clearInterval(pollInterval);
-                loadingIndices.value = loadingIndices.value.filter(i => i !== index)
+                loadingIndices.value = loadingIndices.value.filter(i => i !== index);
             }
         }
     }, 3000); // Poll every 3 seconds
@@ -252,12 +263,21 @@ const closeHistory = () => {
 
 const openEditModal = async (siteID) => {
     try {
-        const response = await axios.post(route('my_site.open_popup_detail'), {'site_id': siteID});
-        editSite.site_name = response.data.site_name;
-        editSite.port_pm2 = response.data.port_pm2;
-        editSite.api_endpoint_url = response.data.api_endpoint_url;
-        editSite.id = response.data.id;
+        const response = await wrapResponse(
+            axios.post(route('my_site.open_popup_detail'), {'site_id': siteID})
+        );
+        
+        if (response.isSuccess) {
+            const data = response.data;
+            editSite.site_name = data.site_name;
+            editSite.port_pm2 = data.port_pm2;
+            editSite.api_endpoint_url = data.api_endpoint_url;
+            editSite.id = data.id;
+        } else {
+            response.handleToast(toast);
+        }
     } catch (error) {
+        console.error('Error loading site data:', error);
         toast('Failed to load site data', { type: 'error' });
     } finally {
         editModalShow.value = true;
@@ -271,10 +291,18 @@ const closeEditModal = () => {
 const updateSite = async () => {
     try {
         updating.value = true;
-        const response = await axios.post(route('my_site.update'), editSite);
-        toast('Site updated successfully', { type: 'success' });
-        setTimeout(() => location.reload(), 800);
+        const response = await wrapResponse(
+            axios.post(route('my_site.update'), editSite)
+        );
+        
+        if (response.isSuccess) {
+            response.handleToast(toast, 'Site updated successfully');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            response.handleToast(toast);
+        }
     } catch (error) {
+        console.error('Error updating site:', error);
         toast('Failed to update site', { type: 'error' });
     } finally {
         updating.value = false;
@@ -299,15 +327,18 @@ const confirmDeleteSite = (site) => {
 const performDeleteSite = async () => {
     try {
         deleting.value = true;
-        const response = await axios.post(route('my_site.delete'), { site_id: deleteTarget.value.id });
-        if (response.data.status) {
-            toast('Deletion queued — processing in background', { type: 'success' });
-            // Optionally remove row from UI instead of reload
+        const response = await wrapResponse(
+            axios.post(route('my_site.delete'), { site_id: deleteTarget.value.id })
+        );
+        
+        if (response.isSuccess) {
+            response.handleToast(toast, 'Deletion queued — processing in background');
             setTimeout(() => location.reload(), 1200);
         } else {
-            toast('Delete failed: ' + (response.data.message || response.data.messages?.join(', ')), { type: 'error' });
+            response.handleToast(toast);
         }
     } catch (e) {
+        console.error('Error deleting site:', error);
         toast('Delete failed', { type: 'error' });
     } finally {
         deleting.value = false;

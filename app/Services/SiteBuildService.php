@@ -7,9 +7,12 @@ namespace App\Services;
 use App\Contracts\BuildScriptGeneratorInterface;
 use App\Models\MySite;
 use App\Models\Parameter;
-use App\Notifications\BuildNotification; // Assuming this exists or using inline mail
+use App\Notifications\BuildNotification;
+use App\Repositories\Interfaces\EnvVariableRepositoryInterface;
+use App\Repositories\Interfaces\MySiteRepositoryInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -22,33 +25,39 @@ class SiteBuildService
     protected Filesystem $storage;
     protected BuildScriptGeneratorInterface $scriptGenerator;
     protected EnvManagerService $envManager;
+    protected MySiteRepositoryInterface $mySiteRepository;
+    protected EnvVariableRepositoryInterface $envVariableRepository;
 
     public function __construct(
         BuildScriptGeneratorInterface $scriptGenerator,
-        EnvManagerService $envManager
+        EnvManagerService $envManager,
+        MySiteRepositoryInterface $mySiteRepository,
+        EnvVariableRepositoryInterface $envVariableRepository
     ) {
         $this->storage = Storage::disk('my_site_storage');
         $this->scriptGenerator = $scriptGenerator;
         $this->envManager = $envManager;
+        $this->mySiteRepository = $mySiteRepository;
+        $this->envVariableRepository = $envVariableRepository;
     }
 
     /**
-     * Create a new site with shell script and initial log
+     * Create a new site with a shell script and initial log
      */
     public function createSite(string $siteName, string $folderSourcePath, bool $includePM2, ?string $portPM2 = null): bool
     {
         $shContentDir = $siteName . "/sh/" . $siteName . "_build.sh";
         $logPathInit = $siteName . "/log/" . $siteName . "_first.log";
 
-        // Generate and store shell script using injected generator
+        // Generate and store shell script using an injected generator
         $shellScript = $this->scriptGenerator->generate($siteName, $folderSourcePath, $includePM2);
         $this->storage->put($shContentDir, $shellScript);
 
-        // Create initial log file
+        // Create an initial log file
         $this->storage->put($logPathInit, str()->random());
 
-        // Insert site record using Eloquent
-        $site = MySite::create([
+        // Insert site record using Repository
+        $site = $this->mySiteRepository->createSite([
             'site_name'        => $siteName,
             'path_log'         => $logPathInit,
             'sh_content_dir'   => $shContentDir,
@@ -66,29 +75,26 @@ class SiteBuildService
      */
     public function updateSite(int $siteId, array $data): bool
     {
-        $site = MySite::findOrFail($siteId);
-
-        return $site->update([
+        return $this->mySiteRepository->updateSite($siteId, [
             'port_pm2'         => $data['port_pm2'] ?? '',
             'api_endpoint_url' => trim($data['api_endpoint_url'] ?? ''),
-            'last_user_build'  => Auth::id(),
         ]);
     }
 
     /**
-     * Regenerate shell script for an existing site
+     * Regenerate a shell script for an existing site
      * Use this when the shell script template has been updated
      */
     public function regenerateShellScript(int $siteId): bool
     {
         $buildLogger = Log::channel('build');
 
-        $site = MySite::findOrFail($siteId);
+        $site = $this->mySiteRepository->findOrFail($siteId);
 
         // Determine if PM2 is enabled (has port_pm2 set)
         $includePM2 = !empty($site->port_pm2);
 
-        // Generate new shell script using injected generator
+        // Generate a new shell script using injected generator
         $shellScript = $this->scriptGenerator->generate(
             $site->site_name,
             $site->path_source_code,
@@ -128,7 +134,7 @@ class SiteBuildService
         try {
             // Check if BuildNotification exists, otherwise mock or skip
             if (class_exists(\App\Notifications\BuildNotification::class) || class_exists(\App\Mail\BuildNotification::class)) {
-                 // Assuming Mail::to()->send() pattern. 
+                 // Assuming Mail::to()->send() pattern.
                  // If using Mailable:
                  // Mail::to($devEmail)->send(new BuildNotification(...));
                  // For now preserving "Mail::to...send(new BuildNotification" syntax from original
@@ -159,7 +165,7 @@ class SiteBuildService
      */
     public function getLogContent(int $siteId): array
     {
-        $site = MySite::findOrFail($siteId);
+        $site = $this->mySiteRepository->findOrFail($siteId);
 
         $content = '';
         if ($this->storage->exists($site->path_log)) {
@@ -178,7 +184,7 @@ class SiteBuildService
      */
     public function getSiteDetails(int $siteId): array
     {
-        $site = MySite::with('lastBuilder')->findOrFail($siteId);
+        $site = $this->mySiteRepository->getSiteWithBuilder($siteId);
 
         $shContent = '';
         if ($this->storage->exists($site->sh_content_dir)) {
@@ -223,7 +229,7 @@ class SiteBuildService
     {
         $logger = Log::channel('build');
         $path = $site->path_source_code;
-        
+
         try {
             $sourcePath = $this->determineEnvSourcePath($path);
             $projectRoot = rtrim($path, DIRECTORY_SEPARATOR);
@@ -248,7 +254,7 @@ class SiteBuildService
 
             // Prepare custom values for EnvManager
             $envUpdates = [];
-            
+
             // PORT logic
             if (!empty($site->port_pm2)) {
                 $envUpdates['PORT'] = $site->port_pm2;
@@ -284,13 +290,13 @@ class SiteBuildService
     }
 
     /**
-     * Replace placeholders in .env file with values from env_variables table
-     * 
+     * Replace placeholders in the.env file with values from the env_variables table
+     *
      * Supports four formats:
-     * 1. ###VAR_NAME                  → Global variable (no group, no site)
-     * 2. ###SITE_NAME###VAR_NAME      → Dynamic Site (SITE_NAME is reserved keyword, current site being built)
+     * 1. ###VAR_NAME → Global variable (no group, no site)
+     * 2. ###SITE_NAME###VAR_NAME → Dynamic Site (SITE_NAME is a reserved keyword, current site being built)
      * 3. ###ACTUAL_SITE_NAME###VAR_NAME → Explicit Site (ACTUAL_SITE_NAME matches a site_name in my_site table)
-     * 4. ###GROUP_NAME###VAR_NAME     → Group-scoped variable (fallback if not a site)
+     * 4. ###GROUP_NAME###VAR_NAME → Group-scoped variable (fallback if not a site)
      */
     protected function replacePlaceholders(string $filePath, $logger, MySite $site): void
     {
@@ -299,7 +305,7 @@ class SiteBuildService
         // Pattern 1: ###PREFIX###VAR_NAME (group or site-specific)
         // Pattern 2: ###VAR_NAME (global)
         $pattern = '/###([A-Z0-9_]+)(###([A-Z0-9_]+))?/';
-        
+
         preg_match_all($pattern, $content, $matches, PREG_SET_ORDER);
 
         if (empty($matches)) {
@@ -319,21 +325,22 @@ class SiteBuildService
 
         // Build a value map for all placeholders
         $valueMap = [];
-        
+
         foreach ($matches as $match) {
             $fullPlaceholder = $match[0]; // e.g., "###APP_KEY" or "###DEV_SERVER###DB_HOST"
-            
+
             // Check if it's a prefixed pattern (###PREFIX###VAR)
             if (isset($match[3]) && !empty($match[3])) {
                 $prefix = $match[1];      // e.g., "DEV_SERVER" or "SITE_NAME"
                 $varName = $match[3];     // e.g., "DB_HOST" or "API_KEY"
-                
+
                 if (strtoupper($prefix) === $siteNameKeyword) {
                     // Site-specific variable (Dynamic Site - Current site being built)
-                    $envVar = \App\Models\EnvVariable::forSite($site->id)
-                        ->where('variable_name', $varName)
-                        ->first();
-                    
+                    $envVar = $this->envVariableRepository->findBySiteAndName(
+                        $site->id,
+                        $varName
+                    );
+
                     if ($envVar) {
                         $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
                         $logger->debug('Dynamic site variable matched', [
@@ -350,14 +357,15 @@ class SiteBuildService
                     }
                 } else {
                     // Check if PREFIX matches an actual site_name (Explicit Site)
-                    $matchedSite = \App\Models\MySite::where('site_name', $prefix)->first();
-                    
+                    $matchedSite = $this->mySiteRepository->findBySiteName($prefix);
+
                     if ($matchedSite) {
                         // Explicit Site-specific variable
-                        $envVar = \App\Models\EnvVariable::forSite($matchedSite->id)
-                            ->where('variable_name', $varName)
-                            ->first();
-                        
+                        $envVar = $this->envVariableRepository->findBySiteAndName(
+                            $matchedSite->id,
+                            $varName
+                        );
+
                         if ($envVar) {
                             $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
                             $logger->debug('Explicit site variable matched', [
@@ -373,11 +381,12 @@ class SiteBuildService
                             ]);
                         }
                     } else {
-                        // Group-scoped variable (fallback)
-                        $envVar = \App\Models\EnvVariable::forGroup($prefix)
-                            ->where('variable_name', $varName)
-                            ->first();
-                        
+                        // Group-scoped variable (PREFIX is a group name)
+                        $envVar = $this->envVariableRepository->findByGroupAndName(
+                            $prefix,
+                            $varName
+                        );
+
                         if ($envVar) {
                             $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
                             $logger->debug('Group variable matched', [
@@ -395,11 +404,9 @@ class SiteBuildService
             } else {
                 // Global variable (###VAR_NAME)
                 $varName = $match[1];
-                
-                $envVar = \App\Models\EnvVariable::global()
-                    ->where('variable_name', $varName)
-                    ->first();
-                
+
+                $envVar = $this->envVariableRepository->findGlobalByName($varName);
+
                 if ($envVar) {
                     $valueMap[$fullPlaceholder] = $this->decryptEnvValue($envVar->variable_value);
                     $logger->debug('Global variable matched', ['variable' => $varName]);
@@ -413,7 +420,7 @@ class SiteBuildService
         $newContent = str_replace(array_keys($valueMap), array_values($valueMap), $content);
 
         file_put_contents($filePath, $newContent);
-        
+
         $logger->info('Placeholder replacement complete', [
             'replaced_count' => count($valueMap),
             'path' => $filePath,
@@ -428,9 +435,9 @@ class SiteBuildService
         if (function_exists('decryptValue')) {
             return decryptValue($encryptedValue);
         }
-        
+
         try {
-            return \Illuminate\Support\Facades\Crypt::decryptString($encryptedValue);
+            return Crypt::decryptString($encryptedValue);
         } catch (\Exception $e) {
             return $encryptedValue; // Return as-is if decryption fails
         }

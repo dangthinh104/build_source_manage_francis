@@ -148,9 +148,6 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Public API for outbound build triggers
-Route::get('/build-my-site-out/site/{siteName}', [MySiteController::class, 'buildMySiteOutbound']);
-
 require __DIR__.'/auth.php';
 
 // Fallback route for undefined paths — return a 404 Inertia page
