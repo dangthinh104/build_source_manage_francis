@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\MySite\BuildSiteRequest;
+use App\Http\Requests\MySite\DeleteSiteRequest;
+use App\Http\Requests\MySite\GetSiteDataRequest;
+use App\Http\Requests\MySite\StoreSiteRequest;
+use App\Http\Requests\MySite\UpdateSiteRequest;
+use App\Http\Requests\MySite\ViewLogFileRequest;
 use App\Jobs\ProcessSiteBuild;
 use App\Repositories\Interfaces\BuildHistoryRepositoryInterface;
 use App\Repositories\Interfaces\MySiteRepositoryInterface;
@@ -13,7 +19,6 @@ use App\Services\SiteBuildService;
 use App\Services\SiteDestructionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
@@ -77,39 +82,19 @@ class MySiteController extends BaseController
     /**
      * Create a new site
      *
-     * Only super_admin can create sites.
-     *
-     * @param Request $request
+     * @param StoreSiteRequest $request
      * @return RedirectResponse
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSiteRequest $request): RedirectResponse
     {
-        // Authorization check
-        if (!auth()->user() || !auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only Super Admin can create new sites.');
-        }
-
-        // Validation
-        $request->validate([
-            'site_name' => 'required|string|max:255|unique:my_site,site_name',
-            'folder_source_path' => [
-                'required',
-                'string',
-                'max:500',
-                'regex:/^\/[a-zA-Z0-9\/_-]+$/',
-                'not_regex:/\.\.\/|\\\./',
-                'unique:my_site,path_source_code'
-            ],
-            'include_pm2' => 'boolean',
-            'port_pm2' => 'nullable|max:10|unique:my_site,port_pm2',
-        ]);
-
         try {
+            $validated = $request->validated();
+
             $this->siteBuildService->createSite(
-                $request->input('site_name'),
-                $request->input('folder_source_path'),
-                $request->input('include_pm2', false),
-                $request->input('port_pm2')
+                $validated['site_name'],
+                $validated['path_source_code'],
+                $validated['include_pm2'] ?? false,
+                $validated['port_pm2'] ?? null
             );
 
             return $this->redirectWithSuccess('my_site.index', 'Site created successfully!');
@@ -121,91 +106,60 @@ class MySiteController extends BaseController
     /**
      * Update site configuration
      *
-     * Admin and Super Admin can edit sites.
-     *
-     * @param Request $request
+     * @param UpdateSiteRequest $request
      * @return JsonResponse
      */
-    public function update(Request $request): JsonResponse
+    public function update(UpdateSiteRequest $request): JsonResponse
     {
-        // Authorization check
-        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
-            return $this->forbidden('You do not have permission to edit sites.');
-        }
-
-        // Validation
-        $request->validate([
-            'id' => 'required|integer',
-            'site_name' => 'nullable|string|max:255|unique:my_site,site_name,' . $request->id,
-            'port_pm2' => 'nullable|unique:my_site,port_pm2,' . $request->id,
-            'api_endpoint_url' => 'nullable|string',
-        ]);
-
         try {
-            $updateData = array_filter([
-                'site_name' => $request->input('site_name'),
-                'port_pm2' => $request->input('port_pm2'),
-                'api_endpoint_url' => $request->input('api_endpoint_url'),
-            ], function($value) {
-                return $value !== null;
-            });
+            $validated = $request->validated();
 
-            $this->mySiteRepository->updateSite($request->id, $updateData);
+            $this->mySiteRepository->update($validated['id'], [
+                'site_name' => $validated['site_name'],
+                'port_pm2' => $validated['port_pm2'] ?? null,
+                'api_endpoint_url' => $validated['api_endpoint_url'] ?? null,
+            ]);
 
-            return $this->success(null, 'Site updated successfully!');
+            return $this->success(null, 'Site updated successfully');
         } catch (\Exception $e) {
-            return $this->error('Failed to update site: ' . $e->getMessage());
+            return $this->error($e->getMessage(), 500, $e);
         }
     }
 
     /**
      * Queue a site build job
      *
-     * Only admin and super_admin can build sites.
-     *
-     * @param Request $request
+     * @param BuildSiteRequest $request
      * @return JsonResponse
      */
-    public function buildMySite(Request $request): JsonResponse
+    public function buildMySite(BuildSiteRequest $request): JsonResponse
     {
-        // Authorization check
-        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
-            return $this->forbidden('Only Admin or Super Admin can build sites.');
-        }
-
         try {
-            $request->validate([
-                'site_id' => 'required|integer|exists:my_site,id',
-            ]);
+            $validated = $request->validated();
+            $siteId = $validated['site_id'];
 
-            // Dispatch async job
-            ProcessSiteBuild::dispatch($request->site_id, auth()->id());
+            ProcessSiteBuild::dispatch($siteId, auth()->id());
 
-            return $this->success(
-                ['status' => 'queued'],
-                'Build has been queued for processing. Check build history for status updates.'
-            );
-        } catch (\Exception $exp) {
-            return $this->error($exp->getMessage());
+            return $this->success([
+                'status' => 'queued',
+                'site_id' => $siteId,
+            ], 'Build queued successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to queue build: ' . $e->getMessage(), 500, $e);
         }
     }
 
     /**
      * Get the current build status for a site
      *
-     * Used for frontend polling to track async build progress.
-     *
-     * @param Request $request
+     * @param GetSiteDataRequest $request
      * @return JsonResponse
      */
-    public function getBuildStatus(Request $request): JsonResponse
+    public function getBuildStatus(GetSiteDataRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'site_id' => 'required|integer|exists:my_site,id',
-            ]);
-
-            $latestBuild = $this->buildHistoryRepository->getLatestBySiteId($request->site_id);
+            $validated = $request->validated();
+            $latestBuild = $this->buildHistoryRepository->getLatestBySiteId($validated['site_id']);
 
             return $this->success([
                 'status' => $latestBuild?->status ?? 'unknown',
@@ -220,17 +174,14 @@ class MySiteController extends BaseController
     /**
      * Get last build log content for a site
      *
-     * @param Request $request
+     * @param GetSiteDataRequest $request
      * @return JsonResponse
      */
-    public function getLogLastBuildByID(Request $request): JsonResponse
+    public function getLogLastBuildByID(GetSiteDataRequest $request): JsonResponse
     {
         try {
-            if (!$request->has('site_id')) {
-                throw new \Exception('Site ID is required.');
-            }
-
-            $data = $this->siteBuildService->getLogContent($request->site_id);
+            $validated = $request->validated();
+            $data = $this->siteBuildService->getLogContent($validated['site_id']);
 
             return $this->success($data);
         } catch (\Exception $e) {
@@ -241,17 +192,14 @@ class MySiteController extends BaseController
     /**
      * Get all site details including shell script and env content
      *
-     * @param Request $request
+     * @param GetSiteDataRequest $request
      * @return JsonResponse
      */
-    public function getAllDetailSiteByID(Request $request): JsonResponse
+    public function getAllDetailSiteByID(GetSiteDataRequest $request): JsonResponse
     {
         try {
-            if (!$request->has('site_id')) {
-                throw new \Exception('Site ID is required.');
-            }
-
-            $data = $this->siteBuildService->getSiteDetails($request->site_id);
+            $validated = $request->validated();
+            $data = $this->siteBuildService->getSiteDetails($validated['site_id']);
 
             return $this->success($data);
         } catch (\Exception $e) {
@@ -262,19 +210,14 @@ class MySiteController extends BaseController
     /**
      * Get build history for a specific site
      *
-     * @param Request $request
+     * @param GetSiteDataRequest $request
      * @return JsonResponse
      */
-    public function getBuildHistoryBySite(Request $request): JsonResponse
+    public function getBuildHistoryBySite(GetSiteDataRequest $request): JsonResponse
     {
         try {
-            if (!$request->has('site_id')) {
-                throw new \Exception('Site ID is required.');
-            }
-
-            $siteId = $request->input('site_id');
-
-            $histories = $this->buildHistoryRepository->getFormattedBySiteId($siteId);
+            $validated = $request->validated();
+            $histories = $this->buildHistoryRepository->getFormattedBySiteId($validated['site_id']);
 
             return $this->success(['histories' => $histories]);
         } catch (\Exception $e) {
@@ -285,16 +228,14 @@ class MySiteController extends BaseController
     /**
      * Get all log files for a site
      *
-     * @param Request $request
+     * @param GetSiteDataRequest $request
      * @return JsonResponse
      */
-    public function getSiteLogs(Request $request): JsonResponse
+    public function getSiteLogs(GetSiteDataRequest $request): JsonResponse
     {
         try {
-            $request->validate(['site_id' => 'required|integer']);
-            $siteId = $request->input('site_id');
-
-            $site = $this->mySiteRepository->findOrFail($siteId);
+            $validated = $request->validated();
+            $site = $this->mySiteRepository->findOrFail($validated['site_id']);
 
             // Get a log directory path for this site
             $logDirectory = $this->storage->getLogDirectory($site->site_name);
@@ -333,21 +274,15 @@ class MySiteController extends BaseController
     /**
      * View the content of a specific log file
      *
-     * @param Request $request
+     * @param ViewLogFileRequest $request
      * @return JsonResponse
      */
-    public function viewLogFile(Request $request): JsonResponse
+    public function viewLogFile(ViewLogFileRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'site_id' => 'required|integer',
-                'log_path' => 'required|string',
-            ]);
-
-            $siteId = $request->input('site_id');
-            $logPath = $request->input('log_path');
-
-            $site = $this->mySiteRepository->findOrFail($siteId);
+            $validated = $request->validated();
+            $site = $this->mySiteRepository->findOrFail($validated['site_id']);
+            $logPath = $validated['log_path'];
 
             // Security check: ensure the log path belongs to this site
             if (!str_starts_with($logPath, $site->site_name . '/log/')) {
@@ -370,29 +305,22 @@ class MySiteController extends BaseController
     }
 
     /**
-     * Delete a site (Super Admin only)
+     * Delete a site and all associated files
      *
-     * @param Request $request
+     * @param DeleteSiteRequest $request
      * @return JsonResponse
      */
-    public function deleteSite(Request $request): JsonResponse
+    public function deleteSite(DeleteSiteRequest $request): JsonResponse
     {
         try {
-            $user = auth()->user();
-            if (!$user || ($user->role ?? '') !== 'super_admin') {
-                throw new \Exception('Unauthorized', 403);
-            }
-
-            $request->validate(['site_id' => 'required|integer']);
-            $siteId = $request->input('site_id');
-
-            $site = $this->mySiteRepository->findOrFail($siteId);
+            $validated = $request->validated();
+            $site = $this->mySiteRepository->findOrFail($validated['site_id']);
 
             $service = app(SiteDestructionService::class);
             $destroyResult = $service->destroy($site->path_source_code, $site->site_name);
 
             if ($destroyResult['success']) {
-                $this->mySiteRepository->delete($siteId);
+                $this->mySiteRepository->delete($site->id);
                 return $this->success(['messages' => $destroyResult['messages']], 'Site deleted successfully');
             }
 
