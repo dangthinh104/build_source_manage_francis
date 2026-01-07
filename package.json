@@ -22,8 +22,11 @@
         "@codemirror/lang-json": "^6.0.2",
         "@codemirror/state": "^6.5.2",
         "@codemirror/view": "^6.38.8",
+        "@vee-validate/i18n": "^4.15.1",
+        "@vee-validate/rules": "^4.15.1",
         "chart.js": "^4.5.1",
         "lodash": "^4.17.21",
+        "vee-validate": "^4.5.8",
         "vue-chartjs": "^5.3.3",
         "vue-codemirror": "^6.1.1",
         "vue3-toastify": "^0.2.8"

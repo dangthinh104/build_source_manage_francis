@@ -9,7 +9,8 @@ import Modal from "@/Components/Modal.vue";
 import axios from "axios";
 import Checkbox from "@/Components/Checkbox.vue";
 import LogHistoryModal from '@/Pages/Utils/LogHistoryModal.vue';
-import { toast } from 'vue3-toastify';
+import SiteForm from '@/Components/MySite/SiteForm.vue';
+import { showToast } from '@/Utils/toastHelper';
 import { wrapResponse } from '@/Utils/apiResponse';
 
 const page = usePage();
@@ -102,11 +103,11 @@ const onOpenLogDetails = async (siteID) => {
             details.site_name = data.site_name;
             details.path_log = data.path_log;
         } else {
-            toast(response.message || 'Failed to load log', { type: 'error' });
+            showToast.error(response.message || 'Failed to load log');
         }
     } catch (error) {
         console.error("Error fetching log details:", error);
-        toast('Failed to load log', { type: 'error' });
+        showToast.error('Failed to load log');
     } finally {
         confirmingViewLog.value = true;
     }
@@ -120,11 +121,11 @@ const openSiteDetailDialog = async (siteID) => {
         if (response.isSuccess) {
             Object.assign(detailSite, response.data);
         } else {
-            toast(response.message || 'Failed to load site details', { type: 'error' });
+            showToast.error(response.message || 'Failed to load site details');
         }
     } catch (error) {
         console.error("Error fetching site details:", error);
-        toast('Failed to load site details', { type: 'error' });
+        showToast.error('Failed to load site details');
     } finally {
         detailViewConfirm.value = true;
     }
@@ -164,10 +165,8 @@ const buildSite = async (siteID, index) => {
             
             // Check if build was queued (async)
             if (buildData.status === 'queued') {
-                toast('Build queued! Processing in background... ⏳', {
-                    type: 'info',
-                    position: 'top-right',
-                    duration: 4000
+                showToast.info('Build queued! Processing in background... ⏳', {
+                    autoClose: 4000
                 });
                 
                 // Poll for build completion
@@ -176,10 +175,8 @@ const buildSite = async (siteID, index) => {
             }
             
             // Immediate success
-            toast('Build completed successfully! 🎉', {
-                type: 'success',
-                position: 'top-right',
-                duration: 4000
+            showToast.success('Build completed successfully! 🎉', {
+                autoClose: 4000
             });
             setTimeout(() => location.reload(), 1500);
         } else {
@@ -188,10 +185,8 @@ const buildSite = async (siteID, index) => {
         }
     } catch (error) {
         console.error('Build error:', error);
-        toast('Build failed: ' + (error.message || 'Something went wrong'), {
-            type: 'error',
-            position: 'top-right',
-            duration: 5000
+        showToast.error('Build failed: ' + (error.message || 'Something went wrong'), {
+            autoClose: 5000
         });
         loadingIndices.value = loadingIndices.value.filter(i => i !== index);
     }
@@ -215,26 +210,20 @@ const pollBuildStatus = async (siteID, index) => {
                 
                 if (buildStatus === 'success') {
                     clearInterval(pollInterval);
-                    toast('Build completed successfully! 🎉', {
-                        type: 'success',
-                        position: 'top-right',
-                        duration: 4000
+                    showToast.success('Build completed successfully! 🎉', {
+                        autoClose: 4000
                     });
                     setTimeout(() => location.reload(), 1500);
                 } else if (buildStatus === 'failed') {
                     clearInterval(pollInterval);
-                    toast('Build failed. Check logs for details.', {
-                        type: 'error',
-                        position: 'top-right',
-                        duration: 5000
+                    showToast.error('Build failed. Check logs for details.', {
+                        autoClose: 5000
                     });
                     loadingIndices.value = loadingIndices.value.filter(i => i !== index);
                 } else if (polls >= maxPolls) {
                     clearInterval(pollInterval);
-                    toast('Build is taking longer than expected. Check logs for status.', {
-                        type: 'warning',
-                        position: 'top-right',
-                        duration: 5000
+                    showToast.warning('Build is taking longer than expected. Check logs for status.', {
+                        autoClose: 5000
                     });
                     loadingIndices.value = loadingIndices.value.filter(i => i !== index);
                 }
@@ -268,17 +257,14 @@ const openEditModal = async (siteID) => {
         );
         
         if (response.isSuccess) {
-            const data = response.data;
-            editSite.site_name = data.site_name;
-            editSite.port_pm2 = data.port_pm2;
-            editSite.api_endpoint_url = data.api_endpoint_url;
-            editSite.id = data.id;
+            // Store full site data for SiteForm
+            Object.assign(editSite, response.data);
         } else {
-            response.handleToast(toast);
+            response.handleToast(showToast);
         }
     } catch (error) {
         console.error('Error loading site data:', error);
-        toast('Failed to load site data', { type: 'error' });
+        showToast.error('Failed to load site data');
     } finally {
         editModalShow.value = true;
     }
@@ -288,27 +274,14 @@ const closeEditModal = () => {
     editModalShow.value = false;
 };
 
-const updateSite = async () => {
-    try {
-        updating.value = true;
-        const response = await wrapResponse(
-            axios.post(route('my_site.update'), editSite)
-        );
-        
-        if (response.isSuccess) {
-            response.handleToast(toast, 'Site updated successfully');
-            setTimeout(() => location.reload(), 800);
-        } else {
-            response.handleToast(toast);
-        }
-    } catch (error) {
-        console.error('Error updating site:', error);
-        toast('Failed to update site', { type: 'error' });
-    } finally {
-        updating.value = false;
-        editModalShow.value = false;
-    }
+const handleEditSuccess = () => {
+    editModalShow.value = false;
+    // Toast is automatically shown by AuthenticatedLayout from flash message
+    setTimeout(() => location.reload(), 800);
 };
+
+// Legacy updateSite removed - now handled by SiteForm
+
 
 const onOpenHistoryLog = (logData) => {
     // Handle both build history and filesystem logs
@@ -332,14 +305,14 @@ const performDeleteSite = async () => {
         );
         
         if (response.isSuccess) {
-            response.handleToast(toast, 'Deletion queued — processing in background');
+            response.handleToast(showToast, 'Deletion queued — processing in background');
             setTimeout(() => location.reload(), 1200);
         } else {
-            response.handleToast(toast);
+            response.handleToast(showToast);
         }
     } catch (e) {
         console.error('Error deleting site:', error);
-        toast('Delete failed', { type: 'error' });
+        showToast.error('Delete failed');
     } finally {
         deleting.value = false;
         deleteConfirmShow.value = false;
@@ -679,48 +652,16 @@ const performDeleteSite = async () => {
             </div>
         </Modal>
 
+        <!-- Edit Site Modal - Using VeeValidate SiteForm -->
         <Modal :show="editModalShow" @close="closeEditModal" :maxWidth="maxWidth">
-            <form @submit.prevent="updateSite">
-                <div class="p-6 space-y-4">
-                    <h2 class="text-lg font-semibold text-slate-900">Edit Site · {{ editSite.site_name }}</h2>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Site Name</label>
-                        <input
-                            v-model="editSite.site_name"
-                            type="text"
-                            class="block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
-                            placeholder="example.com"
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">PM2 Port</label>
-                        <input
-                            v-model="editSite.port_pm2"
-                            type="text"
-                            class="block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
-                            placeholder="3001"
-                        />
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">API Endpoint URL</label>
-                        <input
-                            v-model="editSite.api_endpoint_url"
-                            type="text"
-                            class="block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
-                            placeholder="https://api.example.com"
-                        />
-                    </div>
-
-                    <div class="flex justify-end gap-3">
-                        <SecondaryButton type="button" @click="closeEditModal">Cancel</SecondaryButton>
-                        <PrimaryButton type="submit" :disabled="updating" :loading="updating" loading-text="Updating...">Update Site</PrimaryButton>
-                    </div>
-                </div>
-            </form>
+            <div class="p-6">
+                <SiteForm 
+                    :site="editSite"
+                    :is-edit="true"
+                    @success="handleEditSuccess"
+                    @cancel="closeEditModal"
+                />
+            </div>
         </Modal>
     </section>
 </template>

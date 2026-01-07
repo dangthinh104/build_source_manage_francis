@@ -71,17 +71,30 @@ export class ApiResponse {
 
     /**
      * Display toast notification based on response status
-     * @param {Function} toast - Toast notification function
+     * @param {Function|Object} toastHelper - Toast notification function (supports both old toast and new showToast utility)
      * @param {string|null} successMessage - Override success message
      */
-    handleToast(toast, successMessage = null) {
-        if (this.isSuccess) {
-            const msg = successMessage || this.message || 'Operation successful';
-            toast(msg, { type: 'success' });
-        } else if (this.isFail) {
-            toast(this.message || 'Operation failed', { type: 'warning' });
+    handleToast(toastHelper, successMessage = null) {
+        const msg = successMessage || this.message;
+
+        // Check if it's the new toast utility (has .success, .error methods)
+        if (toastHelper.success && toastHelper.error && toastHelper.warning) {
+            if (this.isSuccess) {
+                toastHelper.success(msg || 'Operation successful');
+            } else if (this.isFail) {
+                toastHelper.warning(msg || 'Operation failed');
+            } else {
+                toastHelper.error(msg || 'An error occurred');
+            }
         } else {
-            toast(this.message || 'An error occurred', { type: 'error' });
+            // Legacy toast function (direct call with options)
+            if (this.isSuccess) {
+                toastHelper(msg || 'Operation successful', { type: 'success' });
+            } else if (this.isFail) {
+                toastHelper(msg || 'Operation failed', { type: 'warning' });
+            } else {
+                toastHelper(msg || 'An error occurred', { type: 'error' });
+            }
         }
     }
 

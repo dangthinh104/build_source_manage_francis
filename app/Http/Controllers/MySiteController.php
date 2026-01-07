@@ -107,9 +107,9 @@ class MySiteController extends BaseController
      * Update site configuration
      *
      * @param UpdateSiteRequest $request
-     * @return JsonResponse
+     * @return RedirectResponse
      */
-    public function update(UpdateSiteRequest $request): JsonResponse
+    public function update(UpdateSiteRequest $request): RedirectResponse
     {
         try {
             $validated = $request->validated();
@@ -120,9 +120,9 @@ class MySiteController extends BaseController
                 'api_endpoint_url' => $validated['api_endpoint_url'] ?? null,
             ]);
 
-            return $this->success(null, 'Site updated successfully');
+            return $this->redirectWithSuccess('my_site.index', 'Site updated successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 500, $e);
+            return $this->redirectWithError('my_site.index', 'Failed to update site: ' . $e->getMessage());
         }
     }
 
