@@ -1,98 +1,149 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BuildGroup\BuildGroupRequest;
+use App\Http\Requests\BuildGroup\StoreBuildGroupRequest;
+use App\Http\Requests\BuildGroup\UpdateBuildGroupRequest;
 use App\Jobs\ProcessSiteBuild;
-use App\Models\BuildGroup;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Repositories\Interfaces\BuildGroupRepositoryInterface;
+use App\Repositories\Interfaces\MySiteRepositoryInterface;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Response;
 
-class BuildGroupController extends Controller
+/**
+ * BuildGroup Controller
+ * 
+ * Handles HTTP requests for build group management.
+ * Delegates data operations to BuildGroupRepository.
+ * Uses Form Requests for validation.
+ */
+class BuildGroupController extends BaseController
 {
-    public function index()
-    {
-        $groups = BuildGroup::with(['sites', 'user'])
-            ->withCount('sites')
-            ->orderByDesc('created_at')
-            ->paginate(15);
-            
-        $allSites = \App\Models\MySite::select('id', 'site_name')->orderBy('site_name')->get();
+    /**
+     * Constructor - Inject dependencies
+     *
+     * @param BuildGroupRepositoryInterface $buildGroupRepository
+     * @param MySiteRepositoryInterface $mySiteRepository
+     */
+    public function __construct(
+        protected BuildGroupRepositoryInterface $buildGroupRepository,
+        protected MySiteRepositoryInterface $mySiteRepository
+    ) {}
 
-        return Inertia::render('BuildGroups/Index', [
+    /**
+     * Display a paginated list of build groups
+     *
+     * @return Response
+     */
+    public function index(): Response
+    {
+        $groups = $this->buildGroupRepository->getGroupsWithSitesAndUser(15);
+        $allSites = $this->mySiteRepository->all(['id', 'site_name'])->sortBy('site_name');
+
+        return inertia('BuildGroups/Index', [
             'groups' => $groups,
-            'allSites' => $allSites,
+            'allSites' => $allSites->values(),
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Store a newly created build group
+     *
+     * @param StoreBuildGroupRequest $request
+     * @return RedirectResponse
+     */
+    public function store(StoreBuildGroupRequest $request): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'site_ids' => 'nullable|array',
-            'site_ids.*' => 'exists:my_site,id',
-        ]);
+        try {
+            $validated = $request->validated();
 
-        $group = BuildGroup::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'user_id' => auth()->id(),
-        ]);
+            $group = $this->buildGroupRepository->create([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
 
-        if ($request->has('site_ids')) {
-            $group->sites()->sync($request->site_ids);
+            if (isset($validated['site_ids']) && !empty($validated['site_ids'])) {
+                $this->buildGroupRepository->syncSites($group->id, $validated['site_ids']);
+            }
+
+            return $this->redirectWithSuccess('build_groups.index', 'Build Group created successfully');
+        } catch (\Exception $e) {
+            return $this->redirectWithError('build_groups.index', 'Failed to create build group: ' . $e->getMessage());
         }
-
-        return redirect()->back()->with('success', 'Build Group created successfully.');
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Update the specified build group
+     *
+     * @param UpdateBuildGroupRequest $request
+     * @param int $id
+     * @return RedirectResponse
+     */
+    public function update(UpdateBuildGroupRequest $request, int $id): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'site_ids' => 'nullable|array',
-            'site_ids.*' => 'exists:my_site,id',
-        ]);
+        try {
+            $validated = $request->validated();
 
-        $group = BuildGroup::findOrFail($id);
-        
-        // Authorization check could go here (e.g. only owner or admin)
-        
-        $group->update([
-            'name' => $request->name,
-            'description' => $request->description,
-        ]);
+            $this->buildGroupRepository->update($id, [
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+            ]);
 
-        if ($request->has('site_ids')) {
-            $group->sites()->sync($request->site_ids);
+            if (isset($validated['site_ids'])) {
+                $this->buildGroupRepository->syncSites($id, $validated['site_ids']);
+            }
+
+            return $this->redirectWithSuccess('build_groups.index', 'Build Group updated successfully');
+        } catch (\Exception $e) {
+            return $this->redirectWithError('build_groups.index', 'Failed to update build group: ' . $e->getMessage());
         }
-
-        return redirect()->back()->with('success', 'Build Group updated successfully.');
     }
 
-    public function destroy($id)
+    /**
+     * Remove the specified build group
+     *
+     * @param int $id
+     * @return RedirectResponse
+     */
+    public function destroy(int $id): RedirectResponse
     {
-        $group = BuildGroup::findOrFail($id);
-        $group->delete();
-
-        return redirect()->back()->with('success', 'Build Group deleted successfully.');
+        try {
+            $this->buildGroupRepository->delete($id);
+            return $this->redirectWithSuccess('build_groups.index', 'Build Group deleted successfully');
+        } catch (\Exception $e) {
+            return $this->redirectWithError('build_groups.index', 'Failed to delete build group: ' . $e->getMessage());
+        }
     }
 
-    public function build(Request $request, $id)
+    /**
+     * Trigger build for all sites in the group
+     *
+     * @param BuildGroupRequest $request
+     * @param int $id
+     * @return RedirectResponse
+     */
+    public function build(BuildGroupRequest $request, int $id): RedirectResponse
     {
-        $group = BuildGroup::with('sites')->findOrFail($id);
+        try {
+            $group = $this->buildGroupRepository->getGroupWithSites($id);
 
-        if ($group->sites->isEmpty()) {
-            return redirect()->back()->with('warning', 'No sites in this group to build.');
+            if ($group->sites->isEmpty()) {
+                return $this->redirectWithError('build_groups.index', 'No sites in this group to build');
+            }
+
+            $triggeredCount = 0;
+            foreach ($group->sites as $site) {
+                ProcessSiteBuild::dispatch($site->id, auth()->id());
+                $triggeredCount++;
+            }
+
+            return $this->redirectWithSuccess('build_groups.index', "Build queued for {$triggeredCount} sites");
+        } catch (\Exception $e) {
+            return $this->redirectWithError('build_groups.index', 'Failed to trigger build: ' . $e->getMessage());
         }
-
-        $triggeredCount = 0;
-        foreach ($group->sites as $site) {
-            ProcessSiteBuild::dispatch($site->id, auth()->id());
-            $triggeredCount++;
-        }
-
-        return redirect()->back()->with('success', "Triggered build for {$triggeredCount} sites.");
     }
 }

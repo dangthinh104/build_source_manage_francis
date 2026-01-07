@@ -7,7 +7,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { toast } from 'vue3-toastify';
+import { showToast } from '@/Utils/toastHelper';
 import { useConfirm } from '@/Composables/useConfirm';
 
 const { confirm } = useConfirm();
@@ -66,9 +66,8 @@ const deleteGroup = async (id) => {
 
     if (isConfirmed) {
         router.delete(route('build_groups.destroy', id), {
-             onSuccess: () => {
-                toast.success('Build Group deleted successfully');
-             }
+            preserveScroll: true,
+            // Toast will be shown by AuthenticatedLayout from flash message
         });
     }
 };
@@ -84,9 +83,7 @@ const triggerBuild = async (id, groupName) => {
     if (isConfirmed) {
         router.post(route('build_groups.build', id), {}, {
             preserveScroll: true,
-            onError: (err) => {
-                 toast.error(err.message || 'Build trigger failed');
-            }
+            // Toast will be shown by AuthenticatedLayout from flash message
         });
     }
 };

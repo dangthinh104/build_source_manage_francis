@@ -19,6 +19,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // Bind the BuildScriptGenerator interface to the Bash implementation
         $this->app->bind(BuildScriptGeneratorInterface::class, BashScriptGenerator::class);
+
+        // Register repositories
+        $this->app->bind(
+            \App\Repositories\Interfaces\BuildGroupRepositoryInterface::class,
+            \App\Repositories\Eloquent\BuildGroupRepository::class
+        );
     }
 
     /**
