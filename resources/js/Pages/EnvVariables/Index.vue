@@ -40,7 +40,7 @@
                         <!-- Reference Scope Radio Buttons -->
                         <div class="mb-4">
                             <label class="block text-xs font-medium text-slate-700 mb-2">Reference Scope:</label>
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <label class="flex items-center px-3 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors" :class="{ 'border-indigo-500 bg-indigo-50': referenceScope === 'global' }">
                                     <input type="radio" v-model="referenceScope" value="global" class="form-radio text-indigo-600 mr-2" />
                                     <span class="text-sm font-medium">Global</span>
@@ -111,10 +111,11 @@
                             <input 
                                 v-model="newVariable.variable_name" 
                                 type="text" 
-                                class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 transition-all duration-200 hover:border-slate-400" 
+                                :class="['w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-400/50 transition-all duration-200 hover:border-slate-400', validationErrors.variable_name ? 'border-red-500' : 'border-slate-300 focus:border-indigo-400']"
                                 placeholder="e.g., APP_DEBUG"
-                                required
+                                @blur="validateForm"
                             />
+                            <p v-if="validationErrors.variable_name" class="mt-1 text-sm text-red-600">{{ validationErrors.variable_name }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-2">Variable Value</label>
@@ -126,8 +127,9 @@
                                 :indent-with-tab="true"
                                 :tab-size="2"
                                 :extensions="[json()]"
-                                class="border border-slate-300 rounded-xl focus-within:ring-2 focus-within:ring-indigo-400/50 focus-within:border-indigo-400 transition-all duration-200 hover:border-slate-400 overflow-hidden"
+                                :class="['border rounded-xl focus-within:ring-2 focus-within:ring-indigo-400/50 transition-all duration-200 hover:border-slate-400 overflow-hidden', validationErrors.variable_value ? 'border-red-500' : 'border-slate-300 focus-within:border-indigo-400']"
                             />
+                            <p v-if="validationErrors.variable_value" class="mt-1 text-sm text-red-600">{{ validationErrors.variable_value }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-2">Group Name (Optional)</label>
@@ -339,7 +341,9 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Codemirror } from 'vue-codemirror';
 import { json } from '@codemirror/lang-json';
 import { useConfirm } from '@/Composables/useConfirm';
-import { toast } from 'vue3-toastify';
+import { showToast } from '@/Utils/toastHelper';
+import { wrapResponse } from '@/Utils/apiResponse';
+import '@/Utils/envVariableValidation'; // Import validation ruleslidation'; // Import validation rules
 
 const { confirm } = useConfirm();
 
@@ -373,6 +377,35 @@ const newVariable = reactive({
     my_site_id: null,
 });
 
+const validationErrors = ref({});
+
+// Simple validation function using validation rules
+const validateForm = () => {
+    const errors = {};
+    
+    // Variable name validation
+    if (!newVariable.variable_name || !newVariable.variable_name.trim()) {
+        errors.variable_name = 'Variable name is required';
+    } else if (newVariable.variable_name.length > 255) {
+        errors.variable_name = 'Variable name must not exceed 255 characters';
+    } else if (!/^[A-Z0-9_]+$/.test(newVariable.variable_name)) {
+        errors.variable_name = 'Variable name must be uppercase letters, numbers, and underscores only';
+    }
+    
+    // Variable value validation
+    if (!newVariable.variable_value || newVariable.variable_value === '') {
+        errors.variable_value = 'Variable value is required';
+    }
+    
+    // Group name validation (optional)
+    if (newVariable.group_name && newVariable.group_name.length > 255) {
+        errors.group_name = 'Group name must not exceed 255 characters';
+    }
+    
+    validationErrors.value = errors;
+    return Object.keys(errors).length === 0;
+};
+
 // Template Pattern Generator State
 const referenceScope = ref('global');
 const selectedExplicitSite = ref('');
@@ -402,9 +435,9 @@ const generatedPattern = computed(() => {
 const copyPattern = async () => {
     try {
         await navigator.clipboard.writeText(generatedPattern.value);
-        toast('Pattern copied to clipboard!', { type: 'success' });
+        showToast.success('Pattern copied to clipboard!');
     } catch (err) {
-        toast('Failed to copy pattern', { type: 'error' });
+        showToast.error('Failed to copy pattern');
     }
 };
 
@@ -414,26 +447,35 @@ const selectedVariable = ref(null);
 
 const storeVariable = async () => {
     try {
-        // Validation: ensure group and site are mutually exclusive
+        // Frontend validation
+        const isValid = validateForm();
+        if (!isValid) {
+            showToast.error('Please fix validation errors');
+            return;
+        }
+        
+        // Validation: ensure group and site are mutually exclusive (though FormRequest will also check)
         if (newVariable.group_name && newVariable.my_site_id) {
-            toast('A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty.', { type: 'warning' });
+            showToast.warning('A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty.');
             return;
         }
 
-        const response = await axios.post('/envVariables', newVariable);
-        if (response.data.success) {
+        const response = await wrapResponse(
+            axios.post('/envVariables', newVariable)
+        );
+        
+        response.handleToast(showToast);
+        
+        if (response.isSuccess) {
             newVariable.variable_name = '';
             newVariable.variable_value = '';
             newVariable.group_name = '';
             newVariable.my_site_id = null;
-            toast('Variable created successfully', { type: 'success' });
             router.reload({ only: ['envVariables'] });
-        } else {
-            toast('Failed to add variable: ' + (response.data.message || 'Unknown error'), { type: 'error' });
         }
     } catch (error) {
-        console.error('Error when add env:', error);
-        toast('Error when adding variable: ' + (error.response?.data?.message || error.message), { type: 'error' });
+        console.error('Error when adding env:', error);
+        showToast.error('Error when adding variable');
     }
 };
 
@@ -444,16 +486,19 @@ const editVariable = (variable) => {
 
 const updateVariable = async (updatedVariable) => {
     try {
-        const response = await axios.put(`/envVariables/${updatedVariable.id}`, updatedVariable);
-        if (response.data.success) {
+        const response = await wrapResponse(
+            axios.put(`/envVariables/${updatedVariable.id}`, updatedVariable)
+        );
+        
+        response.handleToast(showToast);
+        
+        if (response.isSuccess) {
             isEditModalOpen.value = false;
             router.reload({ only: ['envVariables'] });
-        } else {
-            alert('Failed to update variable: ' + (response.data.message || 'Unknown error'));
         }
     } catch (error) {
-        console.error('Error when edit:', error);
-        alert('Error when updating variable: ' + (error.response?.data?.message || error.message));
+        console.error('Error when editing:', error);
+        showToast.error('Error when updating variable');
     }
 };
 
@@ -467,16 +512,18 @@ const deleteVariable = async (id) => {
     if (!confirmed) return;
     
     try {
-        const response = await axios.delete(`/envVariables/${id}`);
-        if (response.data.success) {
-            toast('Variable deleted', { type: 'success' });
+        const response = await wrapResponse(
+            axios.delete(`/envVariables/${id}`)
+        );
+        
+        response.handleToast(showToast);
+        
+        if (response.isSuccess) {
             router.reload({ only: ['envVariables'] });
-        } else {
-            toast('Failed to delete variable: ' + (response.data.message || 'Unknown error'), { type: 'error' });
         }
     } catch (error) {
-        console.error('Error when delete env:', error);
-        toast('Error when deleting variable: ' + (error.response?.data?.message || error.message), { type: 'error' });
+        console.error('Error when deleting env:', error);
+        showToast.error('Error when deleting variable');
     }
 };
 </script>

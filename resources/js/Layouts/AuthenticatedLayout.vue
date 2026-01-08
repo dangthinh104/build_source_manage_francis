@@ -123,6 +123,20 @@ watch(() => page.props.flash, (flash) => {
     }
 }, { deep: true });
 
+// Submenu state
+const expandedMenus = ref(['build_management']);
+
+const toggleSubmenu = (key) => {
+    const index = expandedMenus.value.indexOf(key);
+    if (index > -1) {
+        expandedMenus.value.splice(index, 1);
+    } else {
+        expandedMenus.value.push(key);
+    }
+};
+
+const isSubmenuExpanded = (key) => expandedMenus.value.includes(key);
+
 // Theme color classes (fallback names still available for components that use them)
 const themeColors = computed(() => {
     const color = preferences.value.theme_color || 'indigo';
@@ -151,7 +165,7 @@ const contentWidthClass = computed(() => {
 const sidebarClasses = computed(() => {
     const style = preferences.value.sidebar_style || 'gradient';
     
-    const baseClasses = 'flex-col text-white shadow-2xl transition-all duration-300 relative';
+    const baseClasses = 'flex-col text-white shadow-2xl transition-all duration-300';
     
     const styleMap = {
         gradient: 'bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 shadow-slate-900/50',
@@ -183,28 +197,45 @@ const navItems = computed(() => {
             iconPath: ['M4 6h6v6H4z', 'M14 6h6v6h-6z', 'M4 16h6v6H4z', 'M14 16h6v6h-6z'],
         },
         {
+            key: 'build_management',
+            label: 'Build Management',
+            isGroup: true,
+            adminOnly: true,
+            iconPath: ['M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
+            children: [
+                {
+                    key: 'my_sites',
+                    label: 'All Sites',
+                    routeName: 'my_site.index',
+                    patterns: ['my-site*', 'my_sites*', 'my-sites*', 'my_site.*', 'my_sites.*', 'my-sites.*'],
+                    permission: 'view_mysites',
+                    iconPath: ['M3 7h16', 'M3 12h10', 'M3 17h6'],
+                },
+                {
+                    key: 'build_groups',
+                    label: 'Build Groups',
+                    routeName: 'build_groups.index',
+                    patterns: ['build_groups.*'],
+                    adminOnly: true,
+                    iconPath: ['M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
+                },
+                {
+                    key: 'queues',
+                    label: 'Queue Manager',
+                    routeName: 'queues.index',
+                    patterns: ['queues.*'],
+                    adminOnly: true,
+                    iconPath: ['M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'],
+                },
+            ]
+        },
+        {
             key: 'logs',
             label: 'Log PM2',
             routeName: 'logs.index',
             patterns: ['logs.*'],
             permission: 'view_logs',
             iconPath: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
-        },
-        {
-            key: 'my_sites',
-            label: 'All Sites',
-            routeName: 'my_site.index',
-            patterns: ['my-site*', 'my_sites*', 'my-sites*', 'my_site.*', 'my_sites.*', 'my-sites.*'],
-            permission: 'view_mysites',
-            iconPath: ['M3 7h16', 'M3 12h10', 'M3 17h6'],
-        },
-        {
-            key: 'build_groups',
-            label: 'Build Groups',
-            routeName: 'build_groups.index',
-            patterns: ['build_groups.*'],
-            adminOnly: true,
-            iconPath: ['M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
         },
         {
             key: 'users',
@@ -237,14 +268,6 @@ const navItems = computed(() => {
             patterns: ['rbac.*'],
             superAdminOnly: true, // Only super_admin can see
             iconPath: ['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
-        },
-        {
-            key: 'queues',
-            label: 'Queue Manager',
-            routeName: 'queues.index',
-            patterns: ['queues.*'],
-            adminOnly: true, // Admin and Super Admin can see
-            iconPath: ['M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'],
         },
         {
             key: 'settings',
@@ -294,6 +317,12 @@ const isActive = (item) => {
     return patterns.some((pattern) => route().current(pattern));
 };
 
+// Helper to check if any child of a group is active
+const isGroupActive = (group) => {
+    if (!group.children) return false;
+    return group.children.some(child => isActive(child));
+};
+
 const toggleDesktopSidebar = () => {
     desktopSidebarCollapsed.value = !desktopSidebarCollapsed.value;
 };
@@ -322,7 +351,7 @@ const closeMobileSidebar = () => {
         </Transition>
         <div class="flex min-h-screen">
             <aside
-                class="hidden md:flex"
+                class="hidden md:flex relative"
                 :class="[sidebarClasses, desktopSidebarCollapsed ? 'w-20' : 'w-72']"
             >
                 <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
@@ -350,30 +379,88 @@ const closeMobileSidebar = () => {
                 </div>
 
                 <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1 relative z-10 custom-scrollbar">
-                    <Link
-                        v-for="item in navItems"
-                        :key="item.key"
-                        :href="route(item.routeName)"
-                        class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
-                        :class="[
-                            isActive(item)
-                                ? 'nav-active text-white'
-                                : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md',
-                            desktopSidebarCollapsed ? 'justify-center px-0' : '',
-                            spacingClasses.navItemPadding
-                        ]"
-                    >
-                        <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-                            <path
-                                v-for="(segment, index) in item.iconPath"
-                                :key="`${item.key}-${index}`"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                :d="segment"
-                            />
-                        </svg>
-                        <span v-if="!desktopSidebarCollapsed">{{ item.label }}</span>
-                    </Link>
+<template v-for="item in navItems" :key="item.key">
+    <!-- Group with submenu -->
+    <div v-if="item.isGroup">
+        <button
+            @click="toggleSubmenu(item.key)"
+            class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
+            :class="[
+                isGroupActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md',
+                desktopSidebarCollapsed ? 'justify-center px-0' : '',
+                spacingClasses.navItemPadding
+            ]"
+        >
+            <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path
+                    v-for="(segment, index) in item.iconPath"
+                    :key="`${item.key}-${index}`"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    :d="segment"
+                />
+            </svg>
+            <span v-if="!desktopSidebarCollapsed" class="flex-1 text-left">{{ item.label }}</span>
+            <svg
+                v-if="!desktopSidebarCollapsed"
+                class="h-4 w-4 transition-transform duration-200"
+                :class="isSubmenuExpanded(item.key) ? 'rotate-180' : ''"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+        <!-- Submenu items -->
+        <div
+            v-if="!desktopSidebarCollapsed"
+            v-show="isSubmenuExpanded(item.key)"
+            class="mt-1 ml-6 space-y-1 border-l-2 border-white/10 pl-3"
+        >
+            <Link
+                v-for="child in item.children"
+                :key="child.key"
+                :href="route(child.routeName)"
+                class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200"
+                :class="isActive(child) ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'"
+            >
+                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path
+                        v-for="(segment, index) in child.iconPath"
+                        :key="`${child.key}-${index}`"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        :d="segment"
+                    />
+                </svg>
+                <span>{{ child.label }}</span>
+            </Link>
+        </div>
+    </div>
+    <!-- Regular menu item -->
+    <Link
+        v-else
+        :href="route(item.routeName)"
+        class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
+        :class="[
+            isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md',
+            desktopSidebarCollapsed ? 'justify-center px-0' : '',
+            spacingClasses.navItemPadding
+        ]"
+    >
+        <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+            <path
+                v-for="(segment, index) in item.iconPath"
+                :key="`${item.key}-${index}`"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                :d="segment"
+            />
+        </svg>
+        <span v-if="!desktopSidebarCollapsed">{{ item.label }}</span>
+    </Link>
+</template>
                 </nav>
                 <div class="px-5 py-6 border-t border-white/10 text-xs text-slate-400">
                     <p v-if="!desktopSidebarCollapsed">Signed in as</p>
@@ -381,6 +468,7 @@ const closeMobileSidebar = () => {
                 </div>
             </aside>
 
+        <Teleport to="body">
             <transition name="fade">
                 <div
                     v-if="mobileSidebarOpen"
@@ -413,34 +501,62 @@ const closeMobileSidebar = () => {
                         </button>
                     </div>
                     <nav class="flex-1 overflow-y-auto px-4 py-6 space-y-1 custom-scrollbar">
-                        <Link
-                            v-for="item in navItems"
-                            :key="`mobile-${item.key}`"
-                            :href="route(item.routeName)"
-                            class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
-                            :class="[isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md', spacingClasses.navItemPadding]"
-                            @click="closeMobileSidebar"
-                        >
-                            <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-                                <path
-                                    v-for="(segment, index) in item.iconPath"
-                                    :key="`mobile-${item.key}-${index}`"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    :d="segment"
-                                />
-                            </svg>
-                            <span>{{ item.label }}</span>
-                        </Link>
+                        <template v-for="item in navItems" :key="`mobile-${item.key}`">
+                            <!-- Group with submenu -->
+                            <div v-if="item.isGroup">
+                                <button
+                                    @click="toggleSubmenu(item.key)"
+                                    class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
+                                    :class="[isGroupActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md', spacingClasses.navItemPadding]"
+                                >
+                                    <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                        <path v-for="(segment, index) in item.iconPath" :key="`mobile-${item.key}-${index}`" stroke-linecap="round" stroke-linejoin="round" :d="segment" />
+                                    </svg>
+                                    <span class="flex-1 text-left">{{ item.label }}</span>
+                                    <svg class="h-4 w-4 transition-transform duration-200" :class="isSubmenuExpanded(item.key) ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div v-show="isSubmenuExpanded(item.key)" class="mt-1 ml-6 space-y-1 border-l-2 border-white/10 pl-3">
+                                    <Link
+                                        v-for="child in item.children"
+                                        :key="`mobile-${child.key}`"
+                                        :href="route(child.routeName)"
+                                        class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200"
+                                        :class="isActive(child) ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'"
+                                        @click="closeMobileSidebar"
+                                    >
+                                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                            <path v-for="(segment, index) in child.iconPath" :key="`mobile-${child.key}-${index}`" stroke-linecap="round" stroke-linejoin="round" :d="segment" />
+                                        </svg>
+                                        <span>{{ child.label }}</span>
+                                    </Link>
+                                </div>
+                            </div>
+                            <!-- Regular menu item -->
+                            <Link
+                                v-else
+                                :href="route(item.routeName)"
+                                class="w-full flex items-center gap-3 rounded-2xl text-sm font-medium transition-all duration-300"
+                                :class="[isActive(item) ? 'nav-active text-white' : 'text-slate-300 hover:bg-primary-50 hover:text-primary hover:shadow-md', spacingClasses.navItemPadding]"
+                                @click="closeMobileSidebar"
+                            >
+                                <svg class="h-6 w-6 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                    <path v-for="(segment, index) in item.iconPath" :key="`mobile-${item.key}-${index}`" stroke-linecap="round" stroke-linejoin="round" :d="segment" />
+                                </svg>
+                                <span>{{ item.label }}</span>
+                            </Link>
+                        </template>
                     </nav>
                     <div class="px-5 py-6 border-t border-white/10 text-xs text-slate-400">
                         <p class="font-semibold text-slate-100 truncate">{{ user.name }}</p>
                         <p class="text-slate-300 text-xs truncate">{{ user.email }}</p>
-                            </div>
-                            </div>
-                            </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
-            <div class="flex-1 flex flex-col min-h-screen">
+            <div class="flex-1 flex flex-col min-h-screen min-w-0">
                 <header class="bg-white/95 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-30 shadow-sm shadow-slate-200/50">
                     <div class="flex items-center justify-between px-4 sm:px-6 lg:px-10 2xl:px-16 py-4">
                         <div class="flex items-center gap-3">

@@ -27,11 +27,13 @@
                         <input 
                             v-model="form.key" 
                             type="text" 
-                            class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary disabled:bg-slate-50 disabled:text-slate-500"
+                            :class="['block w-full rounded-xl border px-4 py-2.5 text-sm focus:ring-primary disabled:bg-slate-50 disabled:text-slate-500', validationErrors.key ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-primary']"
                             :disabled="mode === 'edit'"
-                            placeholder="Enter parameter key"
-                            required 
+                            placeholder="e.g., APP_NAME, MAX_UPLOAD_SIZE"
+                            @blur="validateForm"
                         />
+                        <p v-if="validationErrors.key" class="mt-1 text-sm text-red-600">{{ validationErrors.key }}</p>
+                        <p v-if="!validationErrors.key" class="mt-1 text-xs text-slate-500">Uppercase letters, numbers, and underscores recommended</p>
                     </div>
 
                     <div>
@@ -39,10 +41,11 @@
                         <input 
                             v-model="form.value" 
                             type="text" 
-                            class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary"
+                            :class="['block w-full rounded-xl border px-4 py-2.5 text-sm focus:ring-primary', validationErrors.value ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-primary']"
                             placeholder="Enter parameter value"
-                            required 
+                            @blur="validateForm"
                         />
+                        <p v-if="validationErrors.value" class="mt-1 text-sm text-red-600">{{ validationErrors.value }}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -50,7 +53,8 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">Type</label>
                             <select 
                                 v-model="form.type" 
-                                class="block w-full rounded-xl border-slate-200 px-4 py-2.5 text-sm focus:border-primary focus:ring-primary"
+                                :class="['block w-full rounded-xl border px-4 py-2.5 text-sm focus:ring-primary', validationErrors.type ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-primary']"
+                                @blur="validateForm"
                             >
                                 <option value="">Select type</option>
                                 <option value="string">String</option>
@@ -59,6 +63,7 @@
                                 <option value="path">Path</option>
                                 <option value="json">JSON</option>
                             </select>
+                            <p v-if="validationErrors.type" class="mt-1 text-sm text-red-600">{{ validationErrors.type }}</p>
                         </div>
 
                         <div>
@@ -88,10 +93,12 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue';
+import { reactive, watch, ref } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { showToast } from '@/Utils/toastHelper';
+import '@/Utils/parameterValidation'; // Import validation rules
 
 const props = defineProps({
     parameter: Object,
@@ -111,6 +118,8 @@ const form = reactive({
     description: '',
 });
 
+const validationErrors = ref({});
+
 watch(() => props.parameter, (newVal) => {
     if (newVal) {
         form.id = newVal.id || null;
@@ -118,10 +127,46 @@ watch(() => props.parameter, (newVal) => {
         form.value = newVal.value || '';
         form.type = newVal.type || '';
         form.description = newVal.description || '';
+        validationErrors.value = {}; // Clear errors when opening
     }
 }, { immediate: true });
 
+const validateForm = () => {
+    const errors = {};
+    
+    // Key validation
+    if (!form.key || !form.key.trim()) {
+        errors.key = 'Key is required';
+    } else if (form.key.length > 255) {
+        errors.key = 'Key must not exceed 255 characters';
+    } else if (!/^[A-Z0-9_]+$/.test(form.key)) {
+        errors.key = 'Key should be uppercase letters, numbers, and underscores only';
+    }
+    
+    // Value validation
+    if (!form.value || form.value === '') {
+        errors.value = 'Value is required';
+    }
+    
+    // Type validation
+    if (!form.type || !form.type.trim()) {
+        errors.type = 'Type is required';
+    } else if (form.type.length > 100) {
+        errors.type = 'Type must not exceed 100 characters';
+    }
+    
+    validationErrors.value = errors;
+    return Object.keys(errors).length === 0;
+};
+
 const submit = () => {
+    // Frontend validation
+    const isValid = validateForm();
+    if (!isValid) {
+        showToast.error('Please fix validation errors');
+        return;
+    }
+    
     if (props.mode === 'create') {
         emit('create', { key: form.key, value: form.value, type: form.type, description: form.description });
     } else {

@@ -41,14 +41,7 @@ class SiteDestructionJob implements ShouldQueue
             @exec("pm2 delete " . escapeshellarg($this->pm2Name) . " 2>&1", $output, $rc);
         }
 
-        // Remove apache conf if provided
-        if ($this->apacheConfPath && $fs->exists($this->apacheConfPath)) {
-            try {
-                $fs->delete($this->apacheConfPath);
-            } catch (\Exception $e) {
-                // swallow: best-effort cleanup
-            }
-        }
+        // NOTE: Apache config removal is handled manually by the user
 
         // Remove site files (best-effort)
         if ($this->sitePath && $fs->isDirectory($this->sitePath)) {

@@ -306,6 +306,9 @@ class MySiteController extends BaseController
 
     /**
      * Delete a site and all associated files
+     * 
+     * Order: Delete database record FIRST, then dispatch job to delete files.
+     * This ensures we don't have orphan files without a database record.
      *
      * @param DeleteSiteRequest $request
      * @return JsonResponse
@@ -315,16 +318,26 @@ class MySiteController extends BaseController
         try {
             $validated = $request->validated();
             $site = $this->mySiteRepository->findOrFail($validated['site_id']);
+            
+            // Store site info before deletion for file cleanup
+            $sitePath = $site->path_source_code;
+            $siteName = $site->site_name;
 
-            $service = app(SiteDestructionService::class);
-            $destroyResult = $service->destroy($site->path_source_code, $site->site_name);
-
-            if ($destroyResult['success']) {
-                $this->mySiteRepository->delete($site->id);
-                return $this->success(['messages' => $destroyResult['messages']], 'Site deleted successfully');
+            // Step 1: Delete database record FIRST
+            $deleted = $this->mySiteRepository->delete($site->id);
+            
+            if (!$deleted) {
+                return $this->error('Failed to delete site from database', 500);
             }
 
-            return $this->error('Failed to delete site', 500, $destroyResult['messages']);
+            // Step 2: Only after DB success, dispatch job to delete files
+            $service = app(SiteDestructionService::class);
+            $destroyResult = $service->destroy($sitePath, $siteName);
+
+            $messages = $destroyResult['messages'] ?? [];
+            $messages[] = 'Database record deleted successfully';
+
+            return $this->success(['messages' => $messages], 'Site deleted successfully');
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), $e->getCode() ?: 400);
         }

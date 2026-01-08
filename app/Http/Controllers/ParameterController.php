@@ -1,82 +1,88 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Models\Parameter;
-use App\Models\User;
+use App\Http\Requests\Parameter\StoreParameterRequest;
+use App\Http\Requests\Parameter\UpdateParameterRequest;
+use App\Http\Requests\Parameter\DeleteParameterRequest;
+use App\Repositories\Interfaces\ParameterRepositoryInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Inertia\Response;
 
-class ParameterController extends Controller
+/**
+ * Controller for managing application parameters.
+ * 
+ * Uses Repository Pattern and Form Requests for clean architecture.
+ */
+class ParameterController extends BaseController
 {
-    public function __construct()
+    /**
+     * Constructor - Inject dependencies
+     *
+     * @param ParameterRepositoryInterface $parameterRepository
+     */
+    public function __construct(
+        protected ParameterRepositoryInterface $parameterRepository
+    ) {}
+
+    /**
+     * Display list of parameters.
+     */
+    public function index(Request $request): Response
     {
-        $user = auth()->user();
-        if (!$user || $user->role !== User::ROLE_SUPER_ADMIN) {
-            abort(403, 'Unauthorized');
-        }
-    }
-    public function index(Request $request)
-    {
-        $query = Parameter::query();
+        $parameters = $this->parameterRepository->getPaginatedWithFilters(
+            $request->input('key'),
+            10
+        );
 
-        if ($request->has('key')) {
-            $query->where('key', 'like', '%' . $request->input('key') . '%');
-        }
-
-        $parameters = $query
-            ->orderBy('key')
-            ->paginate(10)
-            ->withQueryString()
-            ->through(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'key' => $p->key,
-                    'value' => $p->value,
-                    'type' => $p->type,
-                    'description' => $p->description,
-                ];
-            });
-
-        return \Inertia\Inertia::render('Parameters/Index', [
+        return inertia('Parameters/Index', [
             'parameters' => $parameters,
             'filters' => $request->only(['key']),
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Store a new parameter.
+     */
+    public function store(StoreParameterRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'key' => 'required|string|max:255|unique:parameters,key',
-            'value' => 'required|string',
-            'type' => 'required|string|max:100',
-            'description' => 'nullable|string',
-        ]);
+        try {
+            $parameter = $this->parameterRepository->create($request->validated());
 
-        $parameter = Parameter::create($data);
-
-        return response()->json($parameter, 201);
+            return $this->success($parameter, 'Parameter created successfully', 201);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500, $e);
+        }
     }
 
-    public function update(Request $request, Parameter $parameter)
+    /**
+     * Update an existing parameter.
+     */
+    public function update(UpdateParameterRequest $request, int $id): JsonResponse
     {
-        $data = $request->validate([
-            'key' => 'required|string|max:255|unique:parameters,key,'.$parameter->id,
-            'value' => 'required|string',
-            'type' => 'required|string|max:100',
-            'description' => 'nullable|string',
-        ]);
+        try {
+            $this->parameterRepository->update($id, $request->validated());
 
-        $parameter->update($data);
-
-        return response()->json($parameter);
+            return $this->success(null, 'Parameter updated successfully');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500, $e);
+        }
     }
 
-    public function destroy(Parameter $parameter)
+    /**
+     * Delete a parameter.
+     */
+    public function destroy(DeleteParameterRequest $request, int $id): JsonResponse
     {
-        $parameter->delete();
+        try {
+            $this->parameterRepository->delete($id);
 
-        return response()->json([
-            'message' => 'Parameter deleted successfully',
-        ]);
+            return $this->success(null, 'Parameter deleted successfully');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500, $e);
+        }
     }
 }

@@ -5,6 +5,10 @@ namespace App\Providers;
 use App\Contracts\BuildScriptGeneratorInterface;
 use App\Events\SiteBuildCompleted;
 use App\Listeners\SendBuildNotification;
+use App\Repositories\Eloquent\BuildGroupRepository;
+use App\Repositories\Eloquent\ParameterRepository;
+use App\Repositories\Interfaces\BuildGroupRepositoryInterface;
+use App\Repositories\Interfaces\ParameterRepositoryInterface;
 use App\Services\ScriptGenerators\BashScriptGenerator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -22,8 +26,13 @@ class AppServiceProvider extends ServiceProvider
 
         // Register repositories
         $this->app->bind(
-            \App\Repositories\Interfaces\BuildGroupRepositoryInterface::class,
-            \App\Repositories\Eloquent\BuildGroupRepository::class
+            BuildGroupRepositoryInterface::class,
+            BuildGroupRepository::class
+        );
+
+        $this->app->bind(
+            ParameterRepositoryInterface::class,
+            ParameterRepository::class
         );
     }
 

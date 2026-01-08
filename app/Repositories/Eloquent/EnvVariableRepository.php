@@ -6,6 +6,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\EnvVariable;
 use App\Repositories\Interfaces\EnvVariableRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * EnvVariable Repository
@@ -22,6 +23,20 @@ class EnvVariableRepository extends BaseRepository implements EnvVariableReposit
     protected function model(): string
     {
         return EnvVariable::class;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getPaginatedWithFilters(?string $variableNameFilter = null, int $perPage = 10): LengthAwarePaginator
+    {
+        $query = $this->newQuery()->with('mySite');
+
+        if ($variableNameFilter) {
+            $query->where('variable_name', 'like', '%' . $variableNameFilter . '%');
+        }
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Interfaces;
 
 use App\Models\EnvVariable;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * EnvVariable Repository Interface
@@ -13,6 +14,15 @@ use App\Models\EnvVariable;
  */
 interface EnvVariableRepositoryInterface extends RepositoryInterface
 {
+    /**
+     * Get paginated environment variables with filters
+     *
+     * @param string|null $variableNameFilter
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getPaginatedWithFilters(?string $variableNameFilter = null, int $perPage = 10): LengthAwarePaginator;
+
     /**
      * Find global variable by name
      *

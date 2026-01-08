@@ -26,7 +26,7 @@ const previousSubfolder = computed(() => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
                     <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -58,19 +58,19 @@ const previousSubfolder = computed(() => {
             </div>
 
             <!-- 404 Warning Banner -->
-            <div v-if="notFound && !basePathError" class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-lg">
+            <div v-if="notFound && !basePathError" class="bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200 rounded-2xl p-6 shadow-lg">
                 <div class="flex items-start gap-4">
-                    <div class="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
+                    <div class="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-md">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-amber-900">Folder Not Found</h3>
-                        <p class="text-sm text-amber-700 mt-1">
-                            The folder <code class="bg-amber-100 px-2 py-0.5 rounded font-mono text-amber-800">{{ requestedFolder }}</code> does not exist.
+                        <h3 class="text-lg font-semibold text-primary-900">Folder Not Found</h3>
+                        <p class="text-sm text-primary-700 mt-1">
+                            The folder <code class="bg-primary-100 px-2 py-0.5 rounded font-mono text-primary-800">{{ requestedFolder }}</code> does not exist.
                         </p>
-                        <p class="text-sm text-amber-600 mt-2">
+                        <p class="text-sm text-primary-600 mt-2">
                             Showing all available log folders below. Please select the correct one.
                         </p>
                     </div>
@@ -117,7 +117,7 @@ const previousSubfolder = computed(() => {
                 <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
                     <div class="flex items-center justify-between">
                         <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                            <svg class="h-5 w-5 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="h-5 w-5 shrink-0 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
                             Log Folders
@@ -127,98 +127,115 @@ const previousSubfolder = computed(() => {
                         </span>
                     </div>
                 </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                        <div
-                            v-for="folder in folders"
-                            :key="folder.name"
-                            class="group bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-amber-300 transition-all duration-300"
-                        >
-                            <!-- Folder Header -->
-                            <Link
-                                :href="route('logs.index', { subfolder: (subfolder ? subfolder + '/' : '') + folder.name })"
-                                class="block p-4 border-b border-slate-100 hover:bg-amber-50/50 transition-colors"
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div class="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 group-hover:from-amber-200 group-hover:to-orange-200 flex items-center justify-center transition-colors duration-300">
-                                        <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                        </svg>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <span class="block font-semibold text-slate-900 truncate group-hover:text-amber-700 transition-colors">{{ folder.name }}</span>
-                                        <span class="text-xs text-slate-500">{{ folder.total_files }} files</span>
-                                    </div>
-                                    <svg class="h-4 w-4 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </div>
-                            </Link>
 
-                            <!-- Folder Details -->
-                            <div class="p-4 space-y-3 text-sm">
-                                <!-- Site Mapping -->
-                                <div class="flex items-center justify-between">
-                                    <span class="text-slate-500">Mapped Site</span>
+                <!-- Table View -->
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Folder Name
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Files
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Latest Error
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Mapped Site
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr
+                                v-for="folder in folders"
+                                :key="folder.name"
+                                class="hover:bg-primary-50/50 transition-colors group"
+                            >
+                                <!-- Folder Name -->
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 shrink-0 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 group-hover:from-primary-200 group-hover:to-primary-300 flex items-center justify-center transition-colors">
+                                            <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-slate-900">{{ folder.name }}</p>
+                                            <p class="text-xs text-slate-500">{{ folder.total_files }} total files</p>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Files Count -->
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 rounded-lg">
+                                            <svg class="h-4 w-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span class="text-sm font-semibold text-rose-700">{{ folder.error_count }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-lg">
+                                            <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span class="text-sm font-semibold text-emerald-700">{{ folder.out_count }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Latest Error -->
+                                <td class="px-6 py-4">
+                                    <div v-if="folder.latest_error_file" class="max-w-xs">
+                                        <p class="text-xs font-mono text-rose-600 truncate">{{ folder.latest_error_file }}</p>
+                                        <p class="text-xs text-slate-400">{{ folder.latest_error_time }}</p>
+                                    </div>
+                                    <div v-else class="flex items-center gap-1.5 text-emerald-600">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-xs font-medium">No errors</span>
+                                    </div>
+                                </td>
+
+                                <!-- Mapped Site -->
+                                <td class="px-6 py-4">
                                     <div v-if="folder.site">
                                         <a 
                                             :href="`https://${folder.site.site_name}`" 
                                             target="_blank"
-                                            class="inline-flex items-center gap-1 text-primary hover:text-primary-600 font-medium"
+                                            class="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-600 font-medium"
                                         >
                                             {{ folder.site.site_name }}
                                             <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                             </svg>
                                         </a>
+                                        <p class="text-xs text-slate-400">Port: {{ folder.site.port_pm2 }}</p>
                                     </div>
-                                    <span v-else class="text-slate-400 italic">No site linked</span>
-                                </div>
+                                    <span v-else class="text-sm text-slate-400 italic">No site linked</span>
+                                </td>
 
-                                <!-- File Counts -->
-                                <div class="flex items-center gap-3">
-                                    <!-- Error Files -->
-                                    <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-rose-50 rounded-lg">
-                                        <svg class="h-4 w-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        <span class="font-semibold text-rose-700">{{ folder.error_count }}</span>
-                                        <span class="text-rose-600 text-xs">errors</span>
-                                    </div>
-                                    <!-- Out Files -->
-                                    <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
-                                        <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span class="font-semibold text-emerald-700">{{ folder.out_count }}</span>
-                                        <span class="text-emerald-600 text-xs">outputs</span>
-                                    </div>
-                                </div>
-
-                                <!-- Latest Error File -->
-                                <div v-if="folder.latest_error_file" class="pt-2 border-t border-slate-100">
-                                    <div class="flex items-start gap-2">
-                                        <svg class="h-4 w-4 text-rose-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <div class="min-w-0">
-                                            <p class="text-xs text-slate-500">Latest error:</p>
-                                            <p class="text-xs font-mono text-rose-600 truncate">{{ folder.latest_error_file }}</p>
-                                            <p class="text-xs text-slate-400">{{ folder.latest_error_time }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else class="pt-2 border-t border-slate-100">
-                                    <div class="flex items-center gap-2 text-emerald-600">
+                                <!-- Actions -->
+                                <td class="px-6 py-4 text-right">
+                                    <Link
+                                        :href="route('logs.subfolder', { subfolder: (subfolder ? subfolder + '/' : '') + folder.name })"
+                                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 shadow-sm hover:shadow-md transition-all duration-200"
+                                    >
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                         </svg>
-                                        <span class="text-xs font-medium">No error files</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        <span>View Files</span>
+                                    </Link>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

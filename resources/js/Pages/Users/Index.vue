@@ -9,7 +9,8 @@ import axios from 'axios';
 import InputError from "@/Components/InputError.vue";
 import DialogModal from '@/Components/DialogModal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { toast } from 'vue3-toastify';
+import { showToast } from '@/Utils/toastHelper';
+import { wrapResponse } from '@/Utils/apiResponse';
 
 const page = usePage();
 const props = defineProps({
@@ -31,7 +32,7 @@ watch(searchParams, debounce((value) => {
     });
 }, 300));
 
-const successMessage = ref('');
+
 const processingTwoFactor = ref({});
 const showConfirmModal = ref(false);
 const confirmModalData = ref({
@@ -115,28 +116,25 @@ const confirmDelete = (userId, userName) => {
 // Delete user with axios
 const deleteUser = async (userId) => {
     try {
-        const response = await axios.post(route('users.destroy', userId));
-
-        if (response.status === 200) {
-            if (response.data.status === true) {
-                toast.success(response.data.message);
-                setTimeout(() => window.location.reload(), 500);
-            } else {
-                successMessage.value = response.data.message;
-                toast.error(response.data.message);
-            }
+        const response = await wrapResponse(
+            axios.post(route('users.destroy', userId))
+        );
+        
+        response.handleToast(showToast);
+        
+        if (response.isSuccess) {
+            setTimeout(() => window.location.reload(), 500);
         }
     } catch (error) {
         console.error('Failed to delete user:', error);
-        const errorMsg = error.response?.data?.message || 'Error: Could not delete user.';
-        toast.error(errorMsg);
+        showToast.error('Error: Could not delete user.');
     }
 };
 
 // Toggle 2FA for user
 const confirmToggleTwoFactor = (userId, userName, user) => {
     if (!isSuperAdmin.value) {
-        toast.error('Only Super Admin can manage 2FA');
+        showToast.error('Only Super Admin can manage 2FA');
         return;
     }
 
@@ -159,25 +157,25 @@ const toggleTwoFactor = async (userId, currentStatus) => {
     processingTwoFactor.value[userId] = true;
 
     try {
-        const response = await axios.post(route('users.toggle_two_factor', userId), {
-            enable: !currentStatus
-        });
+        const response = await wrapResponse(
+            axios.post(route('users.toggle_two_factor', userId), {
+                enable: !currentStatus
+            })
+        );
 
-        if (response.data.status === true) {
-            toast.success(response.data.message);
+        response.handleToast(showToast);
+        
+        if (response.isSuccess) {
             // Update the user in the list without full reload
             const userIndex = props.users.data.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
                 // Set to current timestamp if enabling, null if disabling
                 props.users.data[userIndex].two_factor_confirmed_at = currentStatus ? null : new Date().toISOString();
             }
-        } else {
-            toast.error(response.data.message || 'Failed to toggle 2FA');
         }
     } catch (error) {
         console.error('Failed to toggle 2FA:', error);
-        const errorMsg = error.response?.data?.message || 'Error: Could not toggle 2FA.';
-        toast.error(errorMsg);
+        showToast.error('Error: Could not toggle 2FA.');
     } finally {
         processingTwoFactor.value[userId] = false;
     }
@@ -198,19 +196,20 @@ const confirmResetPassword = (userId, userName) => {
 
 const resetPassword = async (userId, userName) => {
     try {
-        const response = await axios.post(route('users.reset-password', userId));
+        const response = await wrapResponse(
+            axios.post(route('users.reset-password', userId))
+        );
 
-        if (response.data.status === true) {
+        if (response.isSuccess) {
             tempPassword.value = response.data.temp_password;
             justResetUserName.value = userName;
             showPasswordModal.value = true;
-            toast.success(response.data.message);
-        } else {
-            toast.error(response.data.message);
         }
+        
+        response.handleToast(showToast);
     } catch (error) {
         console.error('Failed to reset password:', error);
-        toast.error(error.response?.data?.message || 'Error: Could not reset password.');
+        showToast.error('Error: Could not reset password.');
     }
 };
 </script>

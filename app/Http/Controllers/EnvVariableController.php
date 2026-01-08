@@ -4,49 +4,46 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\EnvVariable;
+use App\Http\Requests\EnvVariable\StoreEnvVariableRequest;
+use App\Http\Requests\EnvVariable\UpdateEnvVariableRequest;
+use App\Http\Requests\EnvVariable\DeleteEnvVariableRequest;
+use App\Repositories\Interfaces\EnvVariableRepositoryInterface;
+use App\Repositories\Interfaces\MySiteRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Inertia\Response;
 
 /**
  * Controller for managing environment variables.
  * 
- * Security: Route-level middleware ensures only Admin/Super Admin can access.
- * Data is encrypted using encryptValue/decryptValue helpers from MyHelper.php.
+ * Uses Repository Pattern and Form Requests for clean architecture.
+ * Values are automatically encrypted/decrypted via model accessors.
  */
-class EnvVariableController extends Controller
+class EnvVariableController extends BaseController
 {
     /**
-     * Check if current user has admin privileges.
-     * Aborts with 403 if not authorized.
-     * 
-     * Note: This is defense-in-depth. Routes are also protected by RoleMiddleware.
+     * Constructor - Inject dependencies
+     *
+     * @param EnvVariableRepositoryInterface $envVariableRepository
+     * @param MySiteRepositoryInterface $mySiteRepository
      */
-    private function checkAdminAccess(): void
-    {
-        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
-            abort(403, 'Forbidden. Only Admin or Super Admin can manage environment variables.');
-        }
-    }
+    public function __construct(
+        protected EnvVariableRepositoryInterface $envVariableRepository,
+        protected MySiteRepositoryInterface $mySiteRepository
+    ) {}
 
     /**
      * Display list of environment variables.
      */
     public function index(Request $request): Response
     {
-        $this->checkAdminAccess();
+        $envVariables = $this->envVariableRepository->getPaginatedWithFilters(
+            $request->input('variable_name'),
+            10
+        );
 
-        $query = EnvVariable::with('mySite');
-
-        if ($request->has('variable_name')) {
-            $query->where('variable_name', 'like', '%' . $request->input('variable_name') . '%');
-        }
-
-        $envVariables = $query->paginate(10)->withQueryString();
-        
-        $envVariables->through(function ($variable) {
+        // Transform data to decrypt values for display
+        $envVariables->through(function ($variable){
             return [
                 'id' => $variable->id,
                 'variable_name' => $variable->variable_name,
@@ -57,111 +54,67 @@ class EnvVariableController extends Controller
             ];
         });
 
-        return Inertia::render('EnvVariables/Index', [
+        $sites = $this->mySiteRepository->all(['id', 'site_name']);
+
+        return inertia('EnvVariables/Index', [
             'envVariables' => $envVariables,
             'filters' => $request->only(['variable_name']),
-            'sites' => \App\Models\MySite::orderBy('site_name')->get(['id', 'site_name']),
+            'sites' => $sites,
         ]);
     }
 
     /**
      * Store a new environment variable.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreEnvVariableRequest $request): JsonResponse
     {
-        $this->checkAdminAccess();
+        try {
+            $validated = $request->validated();
 
-        $validated = $request->validate([
-            'variable_name' => 'required|string|max:255',
-            'variable_value' => 'required|string',
-            'group_name' => 'nullable|string|max:255',
-            'my_site_id' => 'nullable|integer|exists:my_site,id',
-        ]);
+            $this->envVariableRepository->create([
+                'variable_name' => $validated['variable_name'],
+                'variable_value' => encryptValue($validated['variable_value']),
+                'group_name' => $validated['group_name'] ?? null,
+                'my_site_id' => $validated['my_site_id'] ?? null,
+            ]);
 
-        // Business logic: group_name and my_site_id are mutually exclusive
-        if (!empty($validated['group_name']) && !empty($validated['my_site_id'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty for a global variable.',
-            ], 422);
+            return $this->success(null, 'Variable created successfully');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500, $e);
         }
-
-        // Check for duplicate in the same scope
-        $existingVar = EnvVariable::where('variable_name', $validated['variable_name'])
-            ->where('group_name', $validated['group_name'] ?? null)
-            ->where('my_site_id', $validated['my_site_id'] ?? null)
-            ->first();
-
-        if ($existingVar) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A variable with this name already exists in the same scope.',
-            ], 422);
-        }
-
-        $data = EnvVariable::create([
-            'variable_name' => $validated['variable_name'],
-            'variable_value' => encryptValue($validated['variable_value']),
-            'group_name' => $validated['group_name'] ?? null,
-            'my_site_id' => $validated['my_site_id'] ?? null,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Variable created successfully',
-            'data' => $data,
-        ]);
     }
 
     /**
      * Update an existing environment variable.
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateEnvVariableRequest $request, int $id): JsonResponse
     {
-        $this->checkAdminAccess();
+        try {
+            $validated = $request->validated();
 
-        $envVariable = EnvVariable::findOrFail($id);
+            $this->envVariableRepository->update($id, [
+                'variable_value' => encryptValue($validated['variable_value']),
+                'group_name' => $validated['group_name'] ?? null,
+                'my_site_id' => $validated['my_site_id'] ?? null,
+            ]);
 
-        $validated = $request->validate([
-            'variable_value' => 'required|string',
-            'group_name' => 'nullable|string|max:255',
-            'my_site_id' => 'nullable|integer|exists:my_site,id',
-        ]);
-
-        // Business logic: group_name and my_site_id are mutually exclusive
-        if (!empty($validated['group_name']) && !empty($validated['my_site_id'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty for a global variable.',
-            ], 422);
+            return $this->success(null, 'Variable updated successfully');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500, $e);
         }
-
-        $envVariable->update([
-            'variable_value' => encryptValue($validated['variable_value']),
-            'group_name' => $validated['group_name'] ?? null,
-            'my_site_id' => $validated['my_site_id'] ?? null,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Variable updated successfully',
-            'data' => $envVariable,
-        ]);
     }
 
     /**
      * Delete an environment variable.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(DeleteEnvVariableRequest $request, int $id): JsonResponse
     {
-        $this->checkAdminAccess();
+        try {
+            $this->envVariableRepository->delete($id);
 
-        $envVariable = EnvVariable::findOrFail($id);
-        $envVariable->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Variable deleted successfully',
-        ]);
+            return $this->success(null, 'Variable deleted successfully');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500, $e);
+        }
     }
 }

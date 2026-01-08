@@ -3,23 +3,36 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-const activeSection = ref('intro');
+// Tab state
+const activeTab = ref('intro');
 
-const sections = [
-    { id: 'intro', title: 'Introduction' },
-    { id: 'mysites', title: 'My Sites & Builds' },
-    { id: 'logs', title: 'Logs & Monitoring' },
-    { id: 'env', title: 'Environment Variables' },
-    { id: 'security', title: 'Profile & Security' },
+const tabs = [
+    { 
+        id: 'intro', 
+        name: 'Introduction', 
+        icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
+    },
+    { 
+        id: 'mysites', 
+        name: 'My Sites & Builds', 
+        icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9'
+    },
+    { 
+        id: 'logs', 
+        name: 'Logs & Monitoring', 
+        icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+    },
+    { 
+        id: 'env', 
+        name: 'Environment Variables', 
+        icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4'
+    },
+    { 
+        id: 'security', 
+        name: 'Profile & Security', 
+        icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
+    },
 ];
-
-const scrollToSection = (id) => {
-    activeSection.value = id;
-    const element = document.getElementById(id);
-    if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-};
 </script>
 
 <template>
@@ -27,40 +40,49 @@ const scrollToSection = (id) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">User Documentation</h2>
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="font-semibold text-xl text-slate-800 leading-tight">Documentation</h2>
+                    <p class="text-sm text-slate-500">Complete guide for Francis Build Manager</p>
+                </div>
+            </div>
         </template>
 
-        <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Sidebar Navigation -->
-            <aside class="w-full lg:w-64 shrink-0">
-                <div class="sticky top-24 space-y-1">
-                    <p class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                        Contents
-                    </p>
-                    <button
-                        v-for="section in sections"
-                        :key="section.id"
-                        @click="scrollToSection(section.id)"
-                        class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors text-left"
-                        :class="activeSection === section.id 
-                            ? 'bg-primary-50 text-primary' 
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
-                    >
-                        <div 
-                            class="w-1.5 h-1.5 rounded-full transition-colors"
-                            :class="activeSection === section.id ? 'bg-primary-600' : 'bg-transparent'"
-                        ></div>
-                        {{ section.title }}
-                    </button>
+        <div class="space-y-6">
+            <!-- Tabs Container -->
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-100 max-w-full">
+                <!-- Tab Headers -->
+                <div class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 overflow-hidden">
+                    <div class="flex overflow-x-auto scrollbar-hide">
+                        <button
+                            v-for="tab in tabs"
+                            :key="tab.id"
+                            @click="activeTab = tab.id"
+                            :class="[
+                                'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-3 sm:py-4 font-medium text-xs sm:text-sm whitespace-nowrap transition-all duration-200 border-b-2',
+                                activeTab === tab.id
+                                    ? 'text-primary border-primary bg-white'
+                                    : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'
+                            ]"
+                        >
+                            <svg class="h-4 w-4 sm:h-5 sm:w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="tab.icon" />
+                            </svg>
+                            <span class="hidden sm:inline">{{ tab.name }}</span>
+                        </button>
+                    </div>
                 </div>
-            </aside>
 
-            <!-- Main Content -->
-            <article class="flex-1 min-w-0 space-y-12 pb-12">
-                
-                <!-- Introduction -->
-                <section id="intro" class="scroll-mt-24">
-                    <div class="prose prose-slate max-w-none">
+                <!-- Tab Content -->
+                <div class="p-6 sm:p-8">
+                    
+                    <!-- Introduction Tab -->
+                    <div v-show="activeTab === 'intro'" class="animate-fade-in prose prose-slate max-w-none">
                         <h2 class="text-3xl font-bold text-slate-900 mb-6">Introduction</h2>
                         <p class="text-lg text-slate-600 leading-relaxed">
                             Welcome to the <strong class="text-indigo-600">Francis Build Manager</strong> documentation. 
@@ -87,13 +109,9 @@ const scrollToSection = (id) => {
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <hr class="border-slate-200" />
-
-                <!-- My Sites -->
-                <section id="mysites" class="scroll-mt-24">
-                    <div class="prose prose-slate max-w-none">
+                    <!-- My Sites Tab -->
+                    <div v-show="activeTab === 'mysites'" class="animate-fade-in prose prose-slate max-w-none">
                         <div class="flex items-center gap-3 mb-6">
                             <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,13 +151,9 @@ const scrollToSection = (id) => {
                             The build process will automatically copy the appropriate source env file (e.g., <code>.env.prod</code>) to <code>.env</code> during deployment.
                         </p>
                     </div>
-                </section>
 
-                <hr class="border-slate-200" />
-
-                <!-- Logs -->
-                <section id="logs" class="scroll-mt-24">
-                     <div class="prose prose-slate max-w-none">
+                    <!-- Logs Tab -->
+                    <div v-show="activeTab === 'logs'" class="animate-fade-in prose prose-slate max-w-none">
                         <div class="flex items-center gap-3 mb-6">
                             <div class="p-2 bg-rose-100 rounded-lg text-rose-600">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -175,13 +189,9 @@ const scrollToSection = (id) => {
                         <h3 class="text-xl font-semibold text-slate-800">Search & Filter</h3>
                         <p>In Advance View, use the search bar to filter logs by keywords. This performs a case-insensitive search within the log messages.</p>
                     </div>
-                </section>
 
-                <hr class="border-slate-200" />
-
-                <!-- Env Variables -->
-                <section id="env" class="scroll-mt-24">
-                     <div class="prose prose-slate max-w-none">
+                    <!-- Environment Variables Tab -->
+                    <div v-show="activeTab === 'env'" class="animate-fade-in prose prose-slate max-w-none">
                         <div class="flex items-center gap-3 mb-6">
                             <div class="p-2 bg-emerald-100 rounded-lg text-emerald-600">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -252,59 +262,6 @@ const scrollToSection = (id) => {
                             </div>
                         </div>
 
-                        <h3 class="text-xl font-semibold text-slate-800 mt-8">Step-by-Step Guide</h3>
-
-                        <h4 class="text-lg font-semibold text-slate-700 mt-6">1. Create a Variable</h4>
-                        <p>Navigate to <strong>Env Variables</strong> and click "Add Variable":</p>
-                        <ul class="list-disc pl-5 space-y-2 text-slate-600">
-                            <li><strong>Variable Name:</strong> Use UPPERCASE_SNAKE_CASE (e.g., <code>API_KEY</code>, <code>DB_PASSWORD</code>)</li>
-                            <li><strong>Variable Value:</strong> The actual value (can be JSON, text, or numbers)</li>
-                            <li><strong>Group Name (Optional):</strong> Enter if this is group-scoped (e.g., <code>PROD_SERVER</code>)</li>
-                            <li><strong>My Site (Optional):</strong> Select if this is site-specific</li>
-                        </ul>
-
-                        <div class="bg-amber-50 border-l-4 border-amber-400 p-4 my-4 rounded-r-lg">
-                            <p class="text-amber-800 text-sm m-0">
-                                <strong>Note:</strong> You cannot set both Group Name <strong>AND</strong> My Site. Choose one or leave both empty for a global variable.
-                            </p>
-                        </div>
-
-                        <h4 class="text-lg font-semibold text-slate-700 mt-6">2. Use in Your .env.example File</h4>
-                        <p>Add placeholders in your project's <code>.env.example</code> file:</p>
-
-                        <div class="bg-slate-900 rounded-xl p-5 my-4 overflow-x-auto">
-                            <pre class="text-xs text-slate-100 m-0"><code># Global Variables (shared across all sites)
-APP_KEY=###APP_KEY
-STRIPE_SECRET=###STRIPE_SECRET
-
-# Group Variables (e.g., for staging vs production)
-DB_HOST=###PROD_SERVER###DB_HOST
-DB_PORT=###PROD_SERVER###DB_PORT
-DB_NAME=###PROD_SERVER###DB_NAME
-
-# Site-Specific Variables (unique per site)
-OAUTH_CLIENT_ID=###SITE_NAME###OAUTH_CLIENT_ID
-OAUTH_CLIENT_SECRET=###SITE_NAME###OAUTH_CLIENT_SECRET
-SITE_DOMAIN=###SITE_NAME###DOMAIN</code></pre>
-                        </div>
-
-                        <h4 class="text-lg font-semibold text-slate-700 mt-6">3. Build the Site</h4>
-                        <p>When you trigger a build, the placeholders are automatically replaced:</p>
-
-                        <div class="bg-white border border-slate-200 rounded-xl p-5 my-4">
-                            <p class="text-sm font-semibold text-slate-700 mb-3">Example Result:</p>
-                            <div class="grid md:grid-cols-2 gap-4 text-xs font-mono">
-                                <div>
-                                    <p class="text-slate-500 mb-2">Before (in .env.example):</p>
-                                    <code class="bg-slate-100 p-2 rounded block">DB_HOST=###PROD_SERVER###DB_HOST</code>
-                                </div>
-                                <div>
-                                    <p class="text-slate-500 mb-2">After (in .env):</p>
-                                    <code class="bg-green-100 p-2 rounded block text-green-800">DB_HOST=mysql-prod.example.com</code>
-                                </div>
-                            </div>
-                        </div>
-
                         <h3 class="text-xl font-semibold text-slate-800 mt-8">Best Practices</h3>
                         <ul class="list-disc pl-5 space-y-2 text-slate-600">
                             <li><strong>Global Variables:</strong> Use for truly shared values like third-party API keys, application secrets</li>
@@ -313,33 +270,10 @@ SITE_DOMAIN=###SITE_NAME###DOMAIN</code></pre>
                             <li><strong>Naming Convention:</strong> Keep variable names descriptive and use UPPERCASE_SNAKE_CASE</li>
                             <li><strong>Security:</strong> Never commit actual secrets to version control - always use placeholders</li>
                         </ul>
-
-                        <h3 class="text-xl font-semibold text-slate-800 mt-8">Troubleshooting</h3>
-                        <div class="space-y-4">
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <p class="font-semibold text-slate-800 mb-2">❓ Placeholder not replaced after build</p>
-                                <ul class="text-sm text-slate-600 space-y-1 ml-4">
-                                    <li>• Check variable name matches exactly (case-sensitive)</li>
-                                    <li>• Verify correct scope (global/group/site) is set</li>
-                                    <li>• Check build logs for warnings about missing variables</li>
-                                </ul>
-                            </div>
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <p class="font-semibold text-slate-800 mb-2">❓ Cannot save variable with both Group and Site</p>
-                                <ul class="text-sm text-slate-600 space-y-1 ml-4">
-                                    <li>• This is intentional - scopes are mutually exclusive</li>
-                                    <li>• Choose one scope or leave both empty for global</li>
-                                </ul>
-                            </div>
-                        </div>
                     </div>
-                </section>
 
-                <hr class="border-slate-200" />
-
-                <!-- Security -->
-                <section id="security" class="scroll-mt-24">
-                     <div class="prose prose-slate max-w-none">
+                    <!-- Profile & Security Tab -->
+                    <div v-show="activeTab === 'security'" class="animate-fade-in prose prose-slate max-w-none">
                         <div class="flex items-center gap-3 mb-6">
                             <div class="p-2 bg-purple-100 rounded-lg text-purple-600">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -366,16 +300,35 @@ SITE_DOMAIN=###SITE_NAME###DOMAIN</code></pre>
                             <li>Use the token as a Bearer Token in authorization headers when calling API endpoints.</li>
                         </ul>
                     </div>
-                </section>
 
-            </article>
+                </div>
+            </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-/* Smooth scrolling for anchor links */
-html {
-    scroll-behavior: smooth;
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>

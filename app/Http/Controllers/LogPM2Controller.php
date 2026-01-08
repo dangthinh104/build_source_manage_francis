@@ -1,31 +1,43 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\Parameter;
+use App\Repositories\Interfaces\MySiteRepositoryInterface;
 use App\Services\LogParserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
-class LogPM2Controller extends Controller
+/**
+ * LogPM2Controller
+ * 
+ * Handles PM2 log file viewing and downloading.
+ * Read-only operations - no database writes.
+ */
+class LogPM2Controller extends BaseController
 {
     protected string $basePath;
-    protected LogParserService $logParser;
     
-    public function __construct(LogParserService $logParser) {
-        // Admin can view, Super Admin has full access
-        if (!auth()->user() || !auth()->user()->hasAdminPrivileges()) {
-            abort(403, 'Forbidden. Only Admin or Super Admin can view PM2 logs.');
-        }
-        
+    /**
+     * Constructor - inject dependencies
+     */
+    public function __construct(
+        protected LogParserService $logParser,
+        protected MySiteRepositoryInterface $mySiteRepository
+    ) {
+        // Authorization handled by middleware in routes
         $this->basePath = Parameter::getValue('LOG_PM2_PATH', env('LOG_PM2_PATH', '/var/www/html/log_pm2'));
-        $this->logParser = $logParser;
     }
 
     /**
      * Display the list of log folders and files
      */
-    public function index($subfolder = '')
+    public function index(string $subfolder = ''): InertiaResponse
     {
         $directoryPath = $this->basePath . ($subfolder ? '/' . $subfolder : '');
 
@@ -60,9 +72,9 @@ class LogPM2Controller extends Controller
         sort($folderNames);
 
         // Get site mappings (site_name matches folder name)
-        $sites = \App\Models\MySite::whereIn('site_name', $folderNames)
-            ->get()
-            ->keyBy('site_name');
+        // Use repository to get site mappings
+        $sitesList = $this->mySiteRepository->all(['id', 'site_name', 'port_pm2']);
+        $sites = collect($sitesList)->whereIn('site_name', $folderNames)->keyBy('site_name');
 
         // Build detailed folder info
         $folders = [];
@@ -120,8 +132,11 @@ class LogPM2Controller extends Controller
     /**
      * Raw Log Viewer - displays file content with pagination
      */
-    public function raw(Request $request, $subfolder, $filename)
+    public function raw(Request $request, string $subfolder, string $filename): InertiaResponse
     {
+        // Validate path to prevent directory traversal
+        $this->validatePath($subfolder, $filename);
+        
         $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
 
         if (!File::exists($filePath)) {
@@ -144,8 +159,11 @@ class LogPM2Controller extends Controller
     /**
      * Advance Log Viewer - parses, strips ANSI, groups stack traces
      */
-    public function advance(Request $request, $subfolder, $filename)
+    public function advance(Request $request, string $subfolder, string $filename): InertiaResponse
     {
+        // Validate path to prevent directory traversal
+        $this->validatePath($subfolder, $filename);
+        
         $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
 
         if (!File::exists($filePath)) {
@@ -190,21 +208,39 @@ class LogPM2Controller extends Controller
     /**
      * Download the log file
      */
-    public function download($subfolder, $filename)
+    public function download(string $subfolder, string $filename): StreamedResponse
     {
+        // Validate path to prevent directory traversal
+        $this->validatePath($subfolder, $filename);
+        
         $filePath = $this->basePath . '/' . $subfolder . '/' . $filename;
 
-        if (File::exists($filePath)) {
-            $content = File::get($filePath);
-            $filePathTemp = public_path('build/' . $filename);
-
-            file_put_contents($filePathTemp, $content);
-            return response()->download($filePathTemp)->deleteFileAfterSend();
-        } else {
+        if (!File::exists($filePath)) {
             abort(404, "File not found");
         }
+
+        // Use streamDownload to avoid creating temp files
+        return response()->streamDownload(function() use ($filePath) {
+            echo File::get($filePath);
+        }, $filename, [
+            'Content-Type' => 'text/plain',
+        ]);
     }
 
+    /**
+     * Validate path to prevent directory traversal attacks
+     */
+    private function validatePath(string $subfolder, string $filename): void
+    {
+        if (str_contains($subfolder, '..') || str_contains($filename, '..')) {
+            abort(400, 'Invalid path');
+        }
+        
+        if (str_contains($subfolder, '/') || str_contains($filename, '/')) {
+            abort(400, 'Invalid path');
+        }
+    }
+    
     /**
      * Format file size in human-readable format
      */

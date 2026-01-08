@@ -170,7 +170,9 @@ import { Head, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import EditModal from './EditModal.vue';
 import { useConfirm } from '@/Composables/useConfirm';
-import { toast } from 'vue3-toastify';
+import { showToast } from '@/Utils/toastHelper';
+import { wrapResponse } from '@/Utils/apiResponse';
+import '@/Utils/parameterValidation'; // Import validation rules
 
 const { confirm } = useConfirm();
 
@@ -194,10 +196,10 @@ watch(searchParams, debounce((value) => {
 const page = usePage();
 const flash = page.props?.flash || {};
 
-const parameters = ref(props.parameters.data || []);
+const parameters = ref(props.parameters?.data || []);
 
 watch(() => props.parameters, (newVal) => {
-    parameters.value = newVal.data || [];
+    parameters.value = newVal?.data || [];
 });
 
 const isModalOpen = ref(false);
@@ -223,24 +225,38 @@ const closeModal = () => {
 
 const handleUpdate = async (updated) => {
   try {
-    await axios.put(`/parameters/${updated.id}`, updated);
-    const idx = parameters.value.findIndex(p => p.id === updated.id);
-    if (idx !== -1) parameters.value[idx] = { ...parameters.value[idx], ...updated };
-    closeModal();
+    const response = await wrapResponse(
+      axios.put(`/parameters/${updated.id}`, updated)
+    );
+    
+    response.handleToast(showToast);
+    
+    if (response.isSuccess) {
+      const idx = parameters.value.findIndex(p => p.id === updated.id);
+      if (idx !== -1) parameters.value[idx] = { ...parameters.value[idx], ...updated };
+      closeModal();
+    }
   } catch (e) {
     console.error('Update failed', e);
-    alert(e.response?.data?.message || 'Update failed');
+    showToast.error('Update failed');
   }
 };
 
 const handleCreate = async (payload) => {
   try {
-    const res = await axios.post('/parameters', payload);
-    parameters.value.unshift(res.data);
-    closeModal();
+    const response = await wrapResponse(
+      axios.post('/parameters', payload)
+    );
+    
+    response.handleToast(showToast);
+    
+    if (response.isSuccess) {
+      parameters.value.unshift(response.data); // wrapResponse already unwraps JSend data
+      closeModal();
+    }
   } catch (e) {
     console.error('Create failed', e);
-    alert(e.response?.data?.message || 'Create failed');
+    showToast.error('Create failed');
   }
 };
 
@@ -254,12 +270,18 @@ const remove = async (param) => {
   if (!confirmed) return;
   
   try {
-    await axios.delete(`/parameters/${param.id}`);
-    parameters.value = parameters.value.filter(p => p.id !== param.id);
-    toast('Parameter deleted', { type: 'success' });
+    const response = await wrapResponse(
+      axios.delete(`/parameters/${param.id}`)
+    );
+    
+    response.handleToast(showToast);
+    
+    if (response.isSuccess) {
+      parameters.value = parameters.value.filter(p => p.id !== param.id);
+    }
   } catch (e) {
     console.error('Delete failed', e);
-    toast(e.response?.data?.message || 'Delete failed', { type: 'error' });
+    showToast.error('Delete failed');
   }
 };
 </script>

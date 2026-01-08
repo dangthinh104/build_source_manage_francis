@@ -143,7 +143,7 @@
 import { reactive, watch, ref, computed } from 'vue';
 import { Codemirror } from 'vue-codemirror';
 import { json } from '@codemirror/lang-json';
-import { toast } from 'vue3-toastify';
+import { showToast } from '@/Utils/toastHelper';
 
 const props = defineProps({
     variable: Object,
@@ -189,9 +189,9 @@ const generatedPattern = computed(() => {
 const copyPattern = async () => {
     try {
         await navigator.clipboard.writeText(generatedPattern.value);
-        toast('Pattern copied to clipboard!', { type: 'success' });
+        showToast.success('Pattern copied to clipboard!');
     } catch (err) {
-        toast('Failed to copy pattern', { type: 'error' });
+        showToast.error('Failed to copy pattern');
     }
 };
 
@@ -212,7 +212,7 @@ watch(
 const updateVariable = () => {
     // Validation: ensure group and site are mutually exclusive
     if (form.group_name && form.my_site_id) {
-        toast('A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty.', { type: 'warning' });
+        showToast.warning('A variable cannot be both group-scoped and site-specific. Please choose one or leave both empty.');
         return;
     }
     emit('update', { ...form });

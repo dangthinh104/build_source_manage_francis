@@ -91,12 +91,6 @@ class SiteDestructionService
             return $result;
         }
 
-        // Prepare best-effort paths for async job
-        $apacheConf = null;
-        if ($appName) {
-            $apacheConf = '/etc/apache2/sites-available/' . $appName . '.conf';
-        }
-
         // Dispatch the async job to perform destruction. This avoids blocking the request and
         // allows the operation to run under the queue worker's permissions.
         try {
@@ -107,7 +101,7 @@ class SiteDestructionService
                 $siteFolderPath,
                 $this->storage->disk()->path($storageFolderName),
                 $appName,
-                $apacheConf
+                null // Apache config removal is handled manually
             );
             $result['messages'][] = 'Destruction job dispatched';
             $result['success'] = true;

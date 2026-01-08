@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Requests\Profile\DeleteProfileRequest;
+use App\Http\Requests\Profile\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,9 +17,14 @@ use PragmaRX\Google2FA\Google2FA;
 use PragmaRX\Google2FAQRCode\Google2FA as Google2FAQRCode;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use App\Models\User;
 
-class ProfileController extends Controller
+/**
+ * ProfileController
+ *
+ * Handles user profile management, including basic info update,
+ * account deletion, and two-factor authentication setup.
+ */
+class ProfileController extends BaseController
 {
     /**
      * Display the user's profile form.
@@ -48,12 +56,8 @@ class ProfileController extends Controller
     /**
      * Delete the user's account.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(DeleteProfileRequest $request): RedirectResponse
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
         $user = $request->user();
 
         Auth::logout();
