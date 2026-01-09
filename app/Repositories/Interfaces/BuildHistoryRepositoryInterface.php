@@ -39,4 +39,13 @@ interface BuildHistoryRepositoryInterface extends RepositoryInterface
      * @return array
      */
     public function getFormattedBySiteId(int $siteId): array;
+
+    /**
+     * Create a new build history record with 'queued' status
+     *
+     * @param int $siteId
+     * @param int $userId
+     * @return BuildHistory
+     */
+    public function createQueuedBuild(int $siteId, int $userId): BuildHistory;
 }

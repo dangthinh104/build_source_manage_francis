@@ -30,7 +30,8 @@ class ProcessSiteBuild implements ShouldQueue
 
     public function __construct(
         public readonly int $siteId,
-        public readonly ?int $userId = null
+        public readonly ?int $userId = null,
+        public readonly ?int $historyId = null
     ) {}
 
     public function handle(SiteBuildService $startBuildService): void
@@ -50,12 +51,24 @@ class ProcessSiteBuild implements ShouldQueue
             'user_id' => $this->userId,
         ]);
 
-        $history = BuildHistory::create([
-            'site_id' => $this->siteId,
-            'user_id' => $this->userId,
-            'status' => 'processing',
-            'output_log' => 'Build started...',
-        ]);
+        // Use existing history record if provided, otherwise create new one
+        $history = $this->historyId 
+            ? BuildHistory::find($this->historyId) 
+            : null;
+        
+        if (!$history) {
+            $history = BuildHistory::create([
+                'site_id' => $this->siteId,
+                'user_id' => $this->userId,
+                'status' => 'processing',
+                'output_log' => 'Build started...',
+            ]);
+        } else {
+            $history->update([
+                'status' => 'processing',
+                'output_log' => 'Build started...',
+            ]);
+        }
 
         try {
             $pathSH = $storage->path($site->sh_content_dir);

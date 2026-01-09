@@ -34,6 +34,11 @@ class GetSiteDataRequest extends BaseFormRequest
                 'integer',
                 'exists:my_site,id',
             ],
+            'history_id' => [
+                'nullable',
+                'integer',
+                'exists:build_histories,id',
+            ],
         ];
     }
 

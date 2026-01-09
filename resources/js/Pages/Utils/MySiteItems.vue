@@ -169,8 +169,8 @@ const buildSite = async (siteID, index) => {
                     autoClose: 4000
                 });
                 
-                // Poll for build completion
-                pollBuildStatus(siteID, index);
+                // Poll for build completion with specific history_id
+                pollBuildStatus(siteID, index, buildData.history_id);
                 return; // Don't remove from loadingIndices yet
             }
             
@@ -178,7 +178,7 @@ const buildSite = async (siteID, index) => {
             showToast.success('Build completed successfully! 🎉', {
                 autoClose: 4000
             });
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => window.location.reload(), 1500);
         } else {
             response.handleToast(toast);
             loadingIndices.value = loadingIndices.value.filter(i => i !== index);
@@ -193,33 +193,47 @@ const buildSite = async (siteID, index) => {
 };
 
 // Poll for build completion status
-const pollBuildStatus = async (siteID, index) => {
+const pollBuildStatus = async (siteID, index, historyId) => {
     const maxPolls = 120; // Max 6 minutes (120 * 3 seconds)
     let polls = 0;
     
     const pollInterval = setInterval(async () => {
         polls++;
+        console.log(`[BuildPoll] Poll #${polls} for site ${siteID}, history ${historyId}`);
         
         try {
             const response = await wrapResponse(
-                axios.post(route('my_site.build_status'), { site_id: siteID })
+                axios.post(route('my_site.build_status'), { 
+                    site_id: siteID,
+                    history_id: historyId 
+                })
             );
+            
+            console.log('[BuildPoll] Response:', response.data);
             
             if (response.isSuccess) {
                 const buildStatus = response.data.status;
                 
                 if (buildStatus === 'success') {
                     clearInterval(pollInterval);
+                    loadingIndices.value = loadingIndices.value.filter(i => i !== index);
                     showToast.success('Build completed successfully! 🎉', {
-                        autoClose: 4000
+                        autoClose: 3000
                     });
-                    setTimeout(() => location.reload(), 1500);
+                    // Refresh page to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else if (buildStatus === 'failed') {
                     clearInterval(pollInterval);
+                    loadingIndices.value = loadingIndices.value.filter(i => i !== index);
                     showToast.error('Build failed. Check logs for details.', {
                         autoClose: 5000
                     });
-                    loadingIndices.value = loadingIndices.value.filter(i => i !== index);
+                    // Also reload to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
                 } else if (polls >= maxPolls) {
                     clearInterval(pollInterval);
                     showToast.warning('Build is taking longer than expected. Check logs for status.', {
@@ -227,10 +241,10 @@ const pollBuildStatus = async (siteID, index) => {
                     });
                     loadingIndices.value = loadingIndices.value.filter(i => i !== index);
                 }
+                // If status is 'processing' or 'queued', continue polling
             }
-            // If status is 'processing' or 'queued', continue polling
         } catch (error) {
-            console.error('Error polling build status:', error);
+            console.error('[BuildPoll] Error polling build status:', error);
             // Continue polling on error (network issues, etc.)
             if (polls >= maxPolls) {
                 clearInterval(pollInterval);

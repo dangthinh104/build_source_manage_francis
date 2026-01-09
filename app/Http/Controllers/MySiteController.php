@@ -10,7 +10,6 @@ use App\Http\Requests\MySite\GetSiteDataRequest;
 use App\Http\Requests\MySite\StoreSiteRequest;
 use App\Http\Requests\MySite\UpdateSiteRequest;
 use App\Http\Requests\MySite\ViewLogFileRequest;
-use App\Jobs\ProcessSiteBuild;
 use App\Repositories\Interfaces\BuildHistoryRepositoryInterface;
 use App\Repositories\Interfaces\MySiteRepositoryInterface;
 use App\Repositories\Interfaces\UserRepositoryInterface;
@@ -136,14 +135,9 @@ class MySiteController extends BaseController
     {
         try {
             $validated = $request->validated();
-            $siteId = $validated['site_id'];
+            $result = $this->siteBuildService->queueBuild($validated['site_id'], auth()->id());
 
-            ProcessSiteBuild::dispatch($siteId, auth()->id());
-
-            return $this->success([
-                'status' => 'queued',
-                'site_id' => $siteId,
-            ], 'Build queued successfully');
+            return $this->success($result, 'Build queued successfully');
         } catch (\Exception $e) {
             return $this->error('Failed to queue build: ' . $e->getMessage(), 500, $e);
         }
@@ -159,7 +153,14 @@ class MySiteController extends BaseController
     {
         try {
             $validated = $request->validated();
-            $latestBuild = $this->buildHistoryRepository->getLatestBySiteId($validated['site_id']);
+            
+            // If history_id is provided, get that specific record
+            // Otherwise fall back to latest build for the site
+            if (!empty($validated['history_id'])) {
+                $latestBuild = $this->buildHistoryRepository->find($validated['history_id']);
+            } else {
+                $latestBuild = $this->buildHistoryRepository->getLatestBySiteId($validated['site_id']);
+            }
 
             return $this->success([
                 'status' => $latestBuild?->status ?? 'unknown',

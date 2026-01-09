@@ -77,4 +77,17 @@ class BuildHistoryRepository extends BaseRepository implements BuildHistoryRepos
             ];
         })->toArray();
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function createQueuedBuild(int $siteId, int $userId): BuildHistory
+    {
+        return $this->create([
+            'site_id' => $siteId,
+            'user_id' => $userId,
+            'status' => 'queued',
+            'output_log' => 'Build queued, waiting for worker...',
+        ]);
+    }
 }

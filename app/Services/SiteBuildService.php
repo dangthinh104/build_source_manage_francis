@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Contracts\BuildScriptGeneratorInterface;
+use App\Jobs\ProcessSiteBuild;
 use App\Models\MySite;
 use App\Models\Parameter;
 use App\Notifications\BuildNotification;
+use App\Repositories\Interfaces\BuildHistoryRepositoryInterface;
 use App\Repositories\Interfaces\EnvVariableRepositoryInterface;
 use App\Repositories\Interfaces\MySiteRepositoryInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -27,18 +29,21 @@ class SiteBuildService
     protected EnvManagerService $envManager;
     protected MySiteRepositoryInterface $mySiteRepository;
     protected EnvVariableRepositoryInterface $envVariableRepository;
+    protected BuildHistoryRepositoryInterface $buildHistoryRepository;
 
     public function __construct(
         BuildScriptGeneratorInterface $scriptGenerator,
         EnvManagerService $envManager,
         MySiteRepositoryInterface $mySiteRepository,
-        EnvVariableRepositoryInterface $envVariableRepository
+        EnvVariableRepositoryInterface $envVariableRepository,
+        BuildHistoryRepositoryInterface $buildHistoryRepository
     ) {
         $this->storage = Storage::disk('my_site_storage');
         $this->scriptGenerator = $scriptGenerator;
         $this->envManager = $envManager;
         $this->mySiteRepository = $mySiteRepository;
         $this->envVariableRepository = $envVariableRepository;
+        $this->buildHistoryRepository = $buildHistoryRepository;
     }
 
     /**
@@ -68,6 +73,29 @@ class SiteBuildService
         ]);
 
         return $site !== null;
+    }
+
+    /**
+     * Queue a site build job
+     * 
+     * Creates a BuildHistory record with 'queued' status and dispatches the job.
+     * Returns data for frontend to track the build progress.
+     *
+     * @param int $siteId
+     * @param int $userId
+     * @return array{status: string, site_id: int, history_id: int}
+     */
+    public function queueBuild(int $siteId, int $userId): array
+    {
+        $history = $this->buildHistoryRepository->createQueuedBuild($siteId, $userId);
+
+        ProcessSiteBuild::dispatch($siteId, $userId, $history->id);
+
+        return [
+            'status' => 'queued',
+            'site_id' => $siteId,
+            'history_id' => $history->id,
+        ];
     }
 
     /**
