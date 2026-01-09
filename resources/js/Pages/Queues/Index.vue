@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { Head } from '@inertiajs/vue3';
 import { router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -127,6 +128,7 @@ const refresh = () => {
 </script>
 
 <template>
+    <Head title="Queue Manager" />
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
