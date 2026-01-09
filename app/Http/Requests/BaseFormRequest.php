@@ -18,11 +18,21 @@ abstract class BaseFormRequest extends FormRequest
     /**
      * Handle a failed validation attempt.
      *
+     * For Inertia requests, use default Laravel/Inertia behavior (redirect with session errors).
+     * For AJAX/API requests, return JSON response in JSend format.
+     *
      * @param Validator $validator
      * @throws HttpResponseException
      */
     protected function failedValidation(Validator $validator): void
     {
+        // For Inertia requests, use default Laravel behavior (redirect with errors in session)
+        if ($this->hasHeader('X-Inertia')) {
+            parent::failedValidation($validator);
+            return;
+        }
+
+        // For AJAX/API requests, return JSON
         throw new HttpResponseException(
             response()->json([
                 'status' => 'fail',

@@ -43,7 +43,7 @@ const form = useForm({
     sh_content_dir: null,
     sh_content: null,
     port_pm2: null,
-    folder_source_path: null,
+    path_source_code: null,
     include_pm2: false,
 })
 
@@ -348,16 +348,16 @@ const performDeleteSite = async () => {
                 </div>
 
                 <div>
-                    <label for="folder_source_path" class="block text-sm font-medium text-slate-700">Folder source path</label>
+                    <label for="path_source_code" class="block text-sm font-medium text-slate-700">Folder source path</label>
                     <input
                         type="text"
-                        id="folder_source_path"
-                        v-model="form.folder_source_path"
-                        name="folder_source_path"
+                        id="path_source_code"
+                        v-model="form.path_source_code"
+                        name="path_source_code"
                         class="mt-1 block w-full rounded-xl border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
                         placeholder="/var/www/html/sites/acme"
                     >
-                    <InputError :message="form.errors.folder_source_path" class="mt-2" />
+                    <InputError :message="form.errors.path_source_code" class="mt-2" />
                 </div>
             </div>
 
