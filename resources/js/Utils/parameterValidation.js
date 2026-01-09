@@ -17,11 +17,6 @@ defineRule('parameter_key', (value) => {
         return 'Key must not exceed 255 characters';
     }
 
-    // Uppercase letters, numbers, and underscores recommended
-    if (!/^[A-Z0-9_]+$/.test(value)) {
-        return 'Key should be uppercase letters, numbers, and underscores only';
-    }
-
     return true;
 });
 

@@ -33,7 +33,7 @@
                             @blur="validateForm"
                         />
                         <p v-if="validationErrors.key" class="mt-1 text-sm text-red-600">{{ validationErrors.key }}</p>
-                        <p v-if="!validationErrors.key" class="mt-1 text-xs text-slate-500">Uppercase letters, numbers, and underscores recommended</p>
+                        <p v-if="!validationErrors.key" class="mt-1 text-xs text-slate-500">Use a descriptive key name</p>
                     </div>
 
                     <div>
@@ -139,8 +139,6 @@ const validateForm = () => {
         errors.key = 'Key is required';
     } else if (form.key.length > 255) {
         errors.key = 'Key must not exceed 255 characters';
-    } else if (!/^[A-Z0-9_]+$/.test(form.key)) {
-        errors.key = 'Key should be uppercase letters, numbers, and underscores only';
     }
     
     // Value validation
