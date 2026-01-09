@@ -259,15 +259,20 @@ class UserController extends BaseController
     /**
      * Force reset/disable two-factor authentication for a user
      *
-     * @param User $user
+     * @param int $id
      * @return RedirectResponse
      */
-    public function resetTwoFactor(User $user): RedirectResponse
+    public function resetTwoFactor(int $id): RedirectResponse
     {
         try {
             // Ensure the acting user is Super Admin
             if (!auth()->user() || !auth()->user()->isSuperAdmin()) {
                 abort(403);
+            }
+
+            $user = $this->userRepository->find($id);
+            if (!$user) {
+                return $this->redirectWithError('users.index', 'User not found.');
             }
 
             $this->userRepository->reset2FA($user->id);
@@ -282,12 +287,19 @@ class UserController extends BaseController
      * Generate a temporary password for a user
      *
      * @param ResetPasswordRequest $request
-     * @param User $user
+     * @param int $id
      * @return JsonResponse
      */
-    public function resetPassword(ResetPasswordRequest $request, User $user): JsonResponse
+    public function resetPassword(ResetPasswordRequest $request, int $id): JsonResponse
     {
         try {
+            $user = $this->userRepository->find($id);
+            
+            // Ensure user exists
+            if (!$user) {
+                return $this->fail('User not found.', 404);
+            }
+
             // Cannot reset own password via this tool
             if (auth()->id() === $user->id) {
                 return $this->fail('You cannot reset your own password via this tool. Use Profile Settings.', 403);

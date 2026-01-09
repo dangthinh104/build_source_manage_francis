@@ -86,8 +86,8 @@ const previousSubfolder = computed(() => {
                         </svg>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <Link 
-                            :href="route('logs.index')" 
+                        <Link
+                            :href="route('logs.index')"
                             class="text-primary hover:text-primary-600 font-medium transition-colors"
                         >
                             Root
@@ -99,9 +99,9 @@ const previousSubfolder = computed(() => {
                             <span class="text-slate-600 font-medium">{{ subfolder }}</span>
                         </template>
                     </div>
-                    <Link 
-                        v-if="subfolder" 
-                        :href="route('logs.index', { subfolder: previousSubfolder })" 
+                    <Link
+                        v-if="subfolder"
+                        :href="route('logs.index', { subfolder: previousSubfolder })"
                         class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-all duration-200"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,8 +206,8 @@ const previousSubfolder = computed(() => {
                                 <!-- Mapped Site -->
                                 <td class="px-6 py-4">
                                     <div v-if="folder.site">
-                                        <a 
-                                            :href="`https://${folder.site.site_name}`" 
+                                        <a
+                                            :href="`https://${folder.site.site_name}`"
                                             target="_blank"
                                             class="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-600 font-medium"
                                         >
@@ -225,7 +225,7 @@ const previousSubfolder = computed(() => {
                                 <td class="px-6 py-4 text-right">
                                     <Link
                                         :href="route('logs.subfolder', { subfolder: (subfolder ? subfolder + '/' : '') + folder.name })"
-                                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 shadow-sm hover:shadow-md transition-all duration-200"
+                                        class="inline-flex items-center gap-1.5 px-4 py-2 btn-primary text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
                                     >
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

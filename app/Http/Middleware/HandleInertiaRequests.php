@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Resources\AuthUserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
@@ -37,9 +38,17 @@ class HandleInertiaRequests extends Middleware
             $user->load('preference');
         }
 
-        $sharedPreferences = $user && $user->preference
-            ? $user->preference
-            : (object) \App\Models\UserPreference::getDefaults();
+        // Get defaults or user preferences
+        $defaults = \App\Models\UserPreference::getDefaults();
+        $userPref = $user?->preference;
+
+        // Only expose necessary preference fields (no id, user_id, timestamps)
+        $cleanPreferences = [
+            'theme_color' => $userPref?->theme_color ?? $defaults['theme_color'],
+            'content_width' => $userPref?->content_width ?? $defaults['content_width'],
+            'sidebar_style' => $userPref?->sidebar_style ?? $defaults['sidebar_style'],
+            'compact_mode' => $userPref?->compact_mode ?? $defaults['compact_mode'],
+        ];
 
         // Generate permission array for frontend
         $permissions = [];
@@ -56,14 +65,19 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
-        // Attach preferences both as a top-level prop and under auth.user for compatibility
+        // Build secure user data using Resource (excludes sensitive fields)
+        // NOTE: preference is NOT included here - it's at root level as 'preferences'
+        $secureUserData = $user
+            ? (new AuthUserResource($user))->toArray($request)
+            : null;
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user ? $user->toArray() + ['preference' => $sharedPreferences] : null,
+                'user' => $secureUserData,
                 'can' => $permissions,
             ],
-            'preferences' => $sharedPreferences,
+            'preferences' => $cleanPreferences,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -73,3 +87,4 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 }
+
